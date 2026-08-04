@@ -23,10 +23,37 @@ export async function signInWithEmail(email, password) {
   return data;
 }
 
+export async function signInWithPhone(phone, password) {
+  const normalizedPhone = String(phone || '').trim();
+
+  if (!normalizedPhone || !password) {
+    throw new Error('أدخل رقم الهاتف وكلمة المرور.');
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    phone: normalizedPhone,
+    password,
+  });
+
+  if (error) {
+    throw new Error(error.message || 'تعذر تسجيل الدخول برقم الهاتف.');
+  }
+
+  return data;
+}
+
 export async function sendPhoneOtp({ phone, fullName = '', country = 'العراق', address = '', email = '' }) {
   const { data, error } = await supabase.auth.signInWithOtp({
     phone,
-    options: { shouldCreateUser: true, data: { full_name: fullName, country, address, email } }
+    options: {
+      shouldCreateUser: true,
+      data: {
+        full_name: fullName,
+        country,
+        address,
+        email,
+      },
+    },
   });
 
   if (error) {
@@ -45,6 +72,20 @@ export async function verifyPhoneOtp(phone, token) {
 
   if (error) {
     throw new Error(error.message || 'رمز التحقق غير صحيح.');
+  }
+
+  return data;
+}
+
+export async function setCurrentUserPassword(password) {
+  if (!password || String(password).length < 6) {
+    throw new Error('يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.');
+  }
+
+  const { data, error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    throw new Error(error.message || 'تعذر حفظ كلمة المرور.');
   }
 
   return data;
@@ -139,5 +180,6 @@ export async function signOut() {
   }
 
   localStorage.removeItem('loggedInUser');
+  localStorage.removeItem('adminImpersonatingCustomer');
   window.location.href = 'login.html';
 }
