@@ -1,5 +1,279 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تسجيل الدخول - MeshWar</title><style>
-body{font-family:Tahoma,sans-serif;background:#f4f6f9;padding:20px;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}.box{background:#fff;padding:30px;border-radius:15px;width:100%;max-width:400px;box-shadow:0 4px 10px rgba(0,0,0,.1)}h2{text-align:center;color:#2c3e50}input,select{width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:8px;box-sizing:border-box}button{width:100%;padding:12px;background:#c00;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:bold;font-size:16px;margin-top:8px}button.secondary{background:#666}p{text-align:center}a{color:#2980b9;text-decoration:none}.status{text-align:center;min-height:24px;color:#555}
-</style></head><body><div class="box"><h2>تسجيل الدخول برقم الهاتف</h2><div id="phoneStep"><select id="countryCode"><option value="+964">العراق (+964)</option><option value="+90">تركيا (+90)</option><option value="+966">السعودية (+966)</option><option value="+971">الإمارات (+971)</option></select><input type="tel" id="phone" placeholder="7701234567" inputmode="numeric"><button id="sendBtn">إرسال رمز الدخول</button></div><div id="otpStep" style="display:none"><input type="text" id="otp" placeholder="رمز التحقق من 6 أرقام" maxlength="6" inputmode="numeric" autocomplete="one-time-code"><button id="verifyBtn">تأكيد الرمز والدخول</button><button class="secondary" id="backBtn">تغيير الرقم</button></div><div class="status" id="status"></div><p><a href="register.html">ليس لديك حساب؟ سجل الآن</a></p></div>
-<script type="module">import{normalizePhone,sendPhoneOtp,verifyPhoneOtp,syncLegacySession}from'./js/auth-service.js';let pending='';const status=document.getElementById('status');document.getElementById('sendBtn').onclick=async()=>{const raw=document.getElementById('phone').value.trim();if(!raw)return alert('أدخل رقم الهاتف.');pending=normalizePhone(document.getElementById('countryCode').value,raw);status.textContent='جاري إرسال الرمز...';try{await sendPhoneOtp({phone:pending});document.getElementById('phoneStep').style.display='none';document.getElementById('otpStep').style.display='block';status.textContent='تم إرسال رمز التحقق عبر SMS.'}catch(e){status.textContent='';alert(e.message)}};document.getElementById('verifyBtn').onclick=async()=>{const token=document.getElementById('otp').value.replace(/\D/g,'');if(!/^\d{6}$/.test(token))return alert('أدخل رمزاً من 6 أرقام.');status.textContent='جاري التحقق...';try{await verifyPhoneOtp(pending,token);await syncLegacySession();location.href='dashboard.html'}catch(e){status.textContent='';alert(e.message)}};document.getElementById('backBtn').onclick=()=>{pending='';document.getElementById('otpStep').style.display='none';document.getElementById('phoneStep').style.display='block';status.textContent=''};</script></body></html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>تسجيل الدخول - MeshWar</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Tahoma, sans-serif;
+      background: #f4f6f9;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .box {
+      background: #fff;
+      padding: 30px;
+      border-radius: 15px;
+      width: 100%;
+      max-width: 430px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .1);
+    }
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+      margin-top: 0;
+    }
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 18px;
+      background: #f1f3f5;
+      padding: 5px;
+      border-radius: 10px;
+    }
+    .tab-btn {
+      margin: 0;
+      background: transparent;
+      color: #555;
+      border: 0;
+      box-shadow: none;
+    }
+    .tab-btn.active {
+      background: #c00;
+      color: #fff;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-top: 10px;
+      color: #333;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #c00;
+      color: #fff;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 16px;
+      margin-top: 8px;
+    }
+    button:disabled {
+      opacity: .65;
+      cursor: not-allowed;
+    }
+    button.secondary { background: #666; }
+    p { text-align: center; }
+    a { color: #2980b9; text-decoration: none; }
+    .status {
+      text-align: center;
+      min-height: 24px;
+      margin-top: 12px;
+      color: #555;
+    }
+    .status.error { color: #b00020; }
+    .status.success { color: #16713a; }
+    .hint {
+      font-size: 13px;
+      color: #777;
+      margin: 4px 0 8px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>تسجيل الدخول</h2>
+
+    <div class="tabs" role="tablist" aria-label="طريقة تسجيل الدخول">
+      <button type="button" class="tab-btn active" id="emailTab" role="tab" aria-selected="true">البريد الإلكتروني</button>
+      <button type="button" class="tab-btn" id="phoneTab" role="tab" aria-selected="false">رقم الهاتف</button>
+    </div>
+
+    <section id="emailPanel" class="panel active" role="tabpanel">
+      <form id="emailForm">
+        <label for="email">البريد الإلكتروني</label>
+        <input type="email" id="email" autocomplete="email" placeholder="name@example.com" required>
+
+        <label for="password">كلمة المرور</label>
+        <input type="password" id="password" autocomplete="current-password" placeholder="أدخل كلمة المرور" required>
+
+        <button type="submit" id="emailLoginBtn">تسجيل الدخول بالبريد</button>
+      </form>
+    </section>
+
+    <section id="phonePanel" class="panel" role="tabpanel">
+      <div id="phoneStep">
+        <label for="countryCode">رمز الدولة</label>
+        <select id="countryCode">
+          <option value="+964">العراق (+964)</option>
+          <option value="+90">تركيا (+90)</option>
+          <option value="+966">السعودية (+966)</option>
+          <option value="+971">الإمارات (+971)</option>
+        </select>
+
+        <label for="phone">رقم الهاتف</label>
+        <input type="tel" id="phone" placeholder="7701234567" inputmode="numeric" autocomplete="tel">
+        <p class="hint">سيتم إرسال رمز تحقق عبر SMS.</p>
+        <button type="button" id="sendBtn">إرسال رمز الدخول</button>
+      </div>
+
+      <div id="otpStep" style="display:none">
+        <label for="otp">رمز التحقق</label>
+        <input type="text" id="otp" placeholder="رمز التحقق من 6 أرقام" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+        <button type="button" id="verifyBtn">تأكيد الرمز والدخول</button>
+        <button type="button" class="secondary" id="backBtn">تغيير الرقم</button>
+      </div>
+    </section>
+
+    <div class="status" id="status" aria-live="polite"></div>
+    <p><a href="register.html">ليس لديك حساب؟ سجل الآن</a></p>
+  </div>
+
+  <script type="module">
+    import {
+      normalizePhone,
+      signInWithEmail,
+      sendPhoneOtp,
+      verifyPhoneOtp,
+      syncLegacySession,
+    } from './js/auth-service.js';
+
+    let pendingPhone = '';
+
+    const emailTab = document.getElementById('emailTab');
+    const phoneTab = document.getElementById('phoneTab');
+    const emailPanel = document.getElementById('emailPanel');
+    const phonePanel = document.getElementById('phonePanel');
+    const emailForm = document.getElementById('emailForm');
+    const emailLoginBtn = document.getElementById('emailLoginBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const status = document.getElementById('status');
+
+    function setStatus(message = '', type = '') {
+      status.textContent = message;
+      status.className = `status ${type}`.trim();
+    }
+
+    function setTab(mode) {
+      const emailActive = mode === 'email';
+
+      emailTab.classList.toggle('active', emailActive);
+      phoneTab.classList.toggle('active', !emailActive);
+      emailPanel.classList.toggle('active', emailActive);
+      phonePanel.classList.toggle('active', !emailActive);
+      emailTab.setAttribute('aria-selected', String(emailActive));
+      phoneTab.setAttribute('aria-selected', String(!emailActive));
+      setStatus('');
+    }
+
+    emailTab.addEventListener('click', () => setTab('email'));
+    phoneTab.addEventListener('click', () => setTab('phone'));
+
+    emailForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        setStatus('أدخل البريد الإلكتروني وكلمة المرور.', 'error');
+        return;
+      }
+
+      emailLoginBtn.disabled = true;
+      setStatus('جاري تسجيل الدخول...');
+
+      try {
+        await signInWithEmail(email, password);
+        await syncLegacySession();
+        setStatus('تم تسجيل الدخول بنجاح.', 'success');
+        window.location.href = 'dashboard.html';
+      } catch (error) {
+        setStatus(error.message || 'تعذر تسجيل الدخول.', 'error');
+      } finally {
+        emailLoginBtn.disabled = false;
+      }
+    });
+
+    sendBtn.addEventListener('click', async () => {
+      const rawPhone = document.getElementById('phone').value.trim();
+
+      if (!rawPhone) {
+        setStatus('أدخل رقم الهاتف.', 'error');
+        return;
+      }
+
+      pendingPhone = normalizePhone(
+        document.getElementById('countryCode').value,
+        rawPhone,
+      );
+
+      sendBtn.disabled = true;
+      setStatus('جاري إرسال الرمز...');
+
+      try {
+        await sendPhoneOtp({ phone: pendingPhone });
+        document.getElementById('phoneStep').style.display = 'none';
+        document.getElementById('otpStep').style.display = 'block';
+        setStatus('تم إرسال رمز التحقق عبر SMS.', 'success');
+      } catch (error) {
+        setStatus(error.message || 'تعذر إرسال الرمز.', 'error');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+
+    verifyBtn.addEventListener('click', async () => {
+      const token = document.getElementById('otp').value.replace(/\D/g, '');
+
+      if (!/^\d{6}$/.test(token)) {
+        setStatus('أدخل رمزاً مكوناً من 6 أرقام.', 'error');
+        return;
+      }
+
+      verifyBtn.disabled = true;
+      setStatus('جاري التحقق...');
+
+      try {
+        await verifyPhoneOtp(pendingPhone, token);
+        await syncLegacySession();
+        setStatus('تم تسجيل الدخول بنجاح.', 'success');
+        window.location.href = 'dashboard.html';
+      } catch (error) {
+        setStatus(error.message || 'رمز التحقق غير صحيح.', 'error');
+      } finally {
+        verifyBtn.disabled = false;
+      }
+    });
+
+    document.getElementById('backBtn').addEventListener('click', () => {
+      pendingPhone = '';
+      document.getElementById('otp').value = '';
+      document.getElementById('otpStep').style.display = 'none';
+      document.getElementById('phoneStep').style.display = 'block';
+      setStatus('');
+    });
+  </script>
+</body>
+</html>
