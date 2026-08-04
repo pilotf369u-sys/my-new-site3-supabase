@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة MeshWar - دليل المتاجر والشحن الدولي</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { font-family: 'Arial', sans-serif; background-color: #f4f6f9; color: #333; padding: 20px; margin: 0; position: relative; }
+        .user-auth-zone { position: absolute; top: 25px; left: 25px; z-index: 1000; }
+        .account-btn { background-color: #cc0000; color: #ffffff; text-decoration: none; padding: 10px 22px; border-radius: 50px; font-weight: bold; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(204, 0, 0, 0.2); transition: all 0.3s ease; }
+        .header-container { text-align: center; margin-top: 30px; margin-bottom: 35px; }
+        .main-logo { width: 380px; max-width: 95%; height: auto; margin-bottom: 15px; border-radius: 8px; }
+        h1 { color: #cc0000; margin: 0 0 8px 0; font-size: 34px; font-weight: bold; }
+        .section-title { color: #cc6600; border-bottom: 2px solid #cc6600; padding-bottom: 5px; margin-top: 40px; font-size: 19px; }
+        .grid-container { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; justify-content: center; }
+        .store-card { background: white; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; width: 210px; height: 195px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        .logo-container { width: 100%; height: 75px; display: flex; justify-content: center; align-items: center; margin-bottom: 5px; }
+        .store-logo { max-width: 85%; max-height: 100%; object-fit: contain; }
+        .store-link { display: inline-block; background-color: #003366; color: white; text-decoration: none; padding: 6px 12px; border-radius: 6px; width: 90%; font-weight: bold; font-size: 12px; margin-top: auto; }
+        .local-link { background-color: #cc6600; }
+        
+        /* زر الطلب الثابت العائم */
+        .fixed-order-btn { position: fixed; bottom: 30px; right: 30px; background-color: #25d366; color: white; padding: 15px 25px; border-radius: 50px; border: none; z-index: 9999; cursor: pointer; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4); transition: transform 0.3s; }
+        .fixed-order-btn:hover { transform: scale(1.05); }
+
+        /* تنسيق التبويبات */
+        .nav-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 25px;
+            background: #ffffff;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        .nav-container a {
+            text-decoration: none;
+            color: #495057;
+            background: #f8f9fa;
+            padding: 10px 22px;
+            border-radius: 50px;
+            font-size: 15px;
+            font-weight: 600;
+            border: 1px solid #dee2e6;
+            transition: all 0.3s ease;
+        }
+        .nav-container a:hover {
+            background: #ff6600;
+            color: #ffffff;
+            border-color: #ff6600;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(255, 102, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- زر الطلب العائم السريع للرئيسية -->
+    <button class="fixed-order-btn" onclick="document.getElementById('orderModal').style.display='block'">
+        <i class="fa-solid fa-cart-shopping"></i> طلب منتج
+    </button>
+
+    <!-- منطقة حساب المستخدم -->
+    <div class="user-auth-zone" style="text-align: center;">
+        <a href="#" id="authLink" class="account-btn">
+            <i class="fa-solid fa-circle-user"></i> <span id="authText">حسابي / تسجيل</span>
+        </a>
+        <br>
+        <a href="#" id="logoutBtn" onclick="logout()" style="display:none; color: #cc0000; font-size: 13px; margin-top: 8px; text-decoration: none; font-weight: bold;">
+            تسجيل خروج
+        </a>
+    </div>
+
+    <div class="header-container">
+        <img class="main-logo" src="images/meshwar-logo.png" alt="MeshWar Logo">
+        <h1>منصة MeshWar</h1>
+        <p>دليلك الشامل للتسوق من الأسواق التركية والشحن الدولي.</p>
+    </div>
+
+    <!-- الأقسام والمتاجر الشاملة -->
+    <h2 class="section-title">المتاجر الشاملة</h2>
+    <div class="grid-container">
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/trendyol.png" alt="Trendyol"></div><h3>Trendyol</h3><a class="store-link" href="https://www.trendyol.com" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/hepsiburada.png" alt="Hepsiburada"></div><h3>Hepsiburada</h3><a class="store-link" href="https://www.hepsiburada.com" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/n11.png" alt="N11"></div><h3>N11</h3><a class="store-link" href="https://www.n11.com" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/boyner.png" alt="Boyner"></div><h3>Boyner</h3><a class="store-link" href="https://www.boyner.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/beymen.png" alt="Beymen"></div><h3>Beymen</h3><a class="store-link" href="https://www.beymen.com/tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+    </div>
+
+    <!-- الأزياء والملابس -->
+    <h2 class="section-title">الأزياء والملابس</h2>
+    <div class="grid-container">
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/waikiki.png" alt="LC Waikiki"></div><h3>LC Waikiki</h3><a class="store-link" href="https://www.lcwaikiki.com" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/defacto.png" alt="Defacto"></div><h3>Defacto</h3><a class="store-link" href="https://www.defacto.com.tr" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/koton.png" alt="Koton"></div><h3>Koton</h3><a class="store-link" href="https://www.koton.com" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/mavi.png" alt="Mavi"></div><h3>Mavi</h3><a class="store-link" href="https://www.mavi.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/colins.png" alt="Colin's"></div><h3>Colin's</h3><a class="store-link" href="https://www.colins.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/ltb.png" alt="LTB"></div><h3>LTB</h3><a class="store-link" href="https://www.ltbjeans.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/uspolo.png" alt="U.S. Polo Assn."></div><h3>U.S. Polo Assn.</h3><a class="store-link" href="https://tr.uspoloassn.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/zara.png" alt="Zara"></div><h3>Zara</h3><a class="store-link" href="https://www.zara.com/tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/hm.png" alt="H&M"></div><h3>H&M</h3><a class="store-link" href="https://www2.hm.com/tr_tr/index.html" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/mango.png" alt="Mango"></div><h3>Mango</h3><a class="store-link" href="https://shop.mango.com/tr/tr" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/bershka.png" alt="Bershka"></div><h3>Bershka</h3><a class="store-link" href="https://www.bershka.com/tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/pullandbear.png" alt="Pull&Bear"></div><h3>Pull&Bear</h3><a class="store-link" href="https://www.pullandbear.com/tr/en/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/stradivarius.png" alt="Stradivarius"></div><h3>Stradivarius</h3><a class="store-link" href="https://www.stradivarius.com/tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/oysho.png" alt="Oysho"></div><h3>Oysho</h3><a class="store-link" href="https://www.oysho.com/tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/massimodutti.png" alt="Massimo Dutti"></div><h3>Massimo Dutti</h3><a class="store-link" href="https://www.massimodutti.com/tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/marksandspencer.png" alt="Marks & Spencer"></div><h3>Marks & Spencer</h3><a class="store-link" href="https://www.marksandspencer.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/ipekyol.png" alt="İpekyol"></div><h3>İpekyol</h3><a class="store-link" href="https://www.ipekyol.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/twist.png" alt="Twist"></div><h3>Twist</h3><a class="store-link" href="https://www.twist.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/dsdamat.png" alt="D'S Damat"></div><h3>D'S Damat</h3><a class="store-link" href="https://www.dsdamat.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/lacoste.png" alt="Lacoste"></div><h3>Lacoste</h3><a class="store-link" href="https://www.lacoste.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/esswaap.png" alt="Esswaap"></div><h3>Esswaap</h3><a class="store-link" href="https://www.esswaap.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/kayra.png" alt="Kayra"></div><h3>Kayra</h3><a class="store-link" href="https://www.kayra.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+    </div>
+
+    <!-- الرياضة والأحذية -->
+    <h2 class="section-title">الرياضة والأحذية</h2>
+    <div class="grid-container">
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/nike.png" alt="Nike"></div><h3>Nike</h3><a class="store-link" href="https://www.nike.com/tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/adidas.png" alt="Adidas"></div><h3>Adidas</h3><a class="store-link" href="https://www.adidas.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/puma.png" alt="Puma"></div><h3>Puma</h3><a class="store-link" href="https://tr.puma.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/flo.png" alt="FLO"></div><h3>FLO</h3><a class="store-link" href="https://www.flo.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/superstep.png" alt="SuperStep"></div><h3>SuperStep</h3><a class="store-link" href="https://www.superstep.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/luvishoes.png" alt="Luvi Shoes"></div><h3>Luvi Shoes</h3><a class="store-link" href="https://www.luvishoes.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+    </div>
+
+    <!-- التجميل والعناية -->
+    <h2 class="section-title">التجميل والعناية</h2>
+    <div class="grid-container">
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/gratis.png" alt="Gratis"></div><h3>Gratis</h3><a class="store-link" href="https://www.gratis.com" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/watsons.png" alt="Watsons"></div><h3>Watsons</h3><a class="store-link" href="https://www.watsons.com.tr" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/eveshop.png" alt="Eve Shop"></div><h3>Eve Shop</h3><a class="store-link" href="https://www.eveshop.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/sephora.png" alt="Sephora"></div><h3>Sephora</h3><a class="store-link" href="https://www.sephora.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/madparfum.png" alt="MAD Parfumeur"></div><h3>MAD Parfumeur</h3><a class="store-link" href="https://www.madparfum.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/goldenrose.png" alt="Golden Rose"></div><h3>Golden Rose</h3><a class="store-link" href="https://shop.goldenrose.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/penti.png" alt="Penti"></div><h3>Penti</h3><a class="store-link" href="https://www.penti.com/tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+    </div>
+
+    <!-- المنزل والأطفال والسوبر ماركت -->
+    <h2 class="section-title">المنزل والأطفال والسوبر ماركت</h2>
+    <div class="grid-container">
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/madamecoco.png" alt="Madame Coco"></div><h3>Madame Coco</h3><a class="store-link" href="https://www.madamecoco.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/englishhome.png" alt="English Home"></div><h3>English Home</h3><a class="store-link" href="https://www.englishhome.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/ebebek.png" alt="ebebek"></div><h3>ebebek</h3><a class="store-link" href="https://kurumsal.ebebek.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/kanz.png" alt="Kanz"></div><h3>Kanz</h3><a class="store-link" href="https://www.kanzcocuk.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/toyzzshop.png" alt="Toyzz Shop"></div><h3>Toyzz Shop</h3><a class="store-link" href="https://www.toyzzshop.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/getir.png" alt="Getir"></div><h3>Getir</h3><a class="store-link" href="https://getir.com/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/migros.png" alt="Migros"></div><h3>Migros</h3><a class="store-link" href="https://www.migros.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/a101.png" alt="A101"></div><h3>A101</h3><a class="store-link" href="https://www.a101.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/bim.png" alt="BİM"></div><h3>BİM</h3><a class="store-link" href="https://www.bim.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/sok.png" alt="Şok Market"></div><h3>Şok Market</h3><a class="store-link" href="https://kurumsal.sokmarket.com.tr/" target="_blank" rel="noopener noreferrer">تصفح</a></div>
+    </div>
+
+    <!-- المتاجر الشخصية والمحلية -->
+    <h2 class="section-title">المتاجر الشخصية والمحلية</h2>
+    <div class="grid-container">
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/meshwar.png" alt="Meshwar"></div><h3>Meshwar</h3><a class="store-link local-link" href="meshwar.html">دخول</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/supermarket.png" alt="سوبرماركت"></div><h3>سوبرماركت</h3><a class="store-link local-link" href="supermarket.html">دخول</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/gifts.png" alt="تحفيات"></div><h3>تحفيات</h3><a class="store-link local-link" href="gifts.html">دخول</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/home.png" alt="مستلزمات منزل"></div><h3>مستلزمات منزل</h3><a class="store-link local-link" href="home.html">دخول</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/pets.png" alt="مستلزمات حيوانات"></div><h3>مستلزمات حيوانات</h3><a class="store-link local-link" href="pets.html">دخول</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/beauty.png" alt="تجميل وعناية"></div><h3>تجميل وعناية</h3><a class="store-link local-link" href="beauty.html">دخول</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/kids.png" alt="أطفال"></div><h3>أطفال</h3><a class="store-link local-link" href="kids.html">دخول</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/men.png" alt="رجالي"></div><h3>رجالي</h3><a class="store-link local-link" href="men.html">دخول</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/women.png" alt="نسائي"></div><h3>نسائي</h3><a class="store-link local-link" href="women.html">دخول</a></div>
+        <div class="store-card"><div class="logo-container"><img class="store-logo" src="images/tech.png" alt="أجهزة وتكنولوجيا"></div><h3>أجهزة وتكنولوجيا</h3><a class="store-link local-link" href="tech.html">دخول</a></div>
+    </div>
+
+    <!-- نافذة الطلب (بدون حقول الاسم والكود والعنوان - تسحب تلقائياً) -->
+    <div id="orderModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; overflow-y:auto;">
+        <div style="background:white; width:90%; max-width:350px; margin:30px auto; padding:15px; border-radius:15px; text-align:right; direction:rtl;">
+            
+            <div style="text-align:center; margin-bottom:10px;">
+                <img src="images/meshwar-logo.png" alt="MeshWar Logo" style="max-width:100px; height:auto;">
+            </div>
+
+            <h3 style="color:#cc0000; text-align:center; margin-top:0; font-size:18px;">إرسال تفاصيل الطلب</h3>
+            
+            <label>رابط المنتج:</label>
+            <input type="text" id="pUrl" placeholder="الصق الرابط هنا" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+            
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;"><label>اللون:</label><input type="text" id="pColor" placeholder="مثلاً: أسود" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"></div>
+                <div style="flex:1;"><label>المقاس:</label><input type="text" id="pSize" placeholder="مثلاً: XL" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"></div>
+            </div>
+            
+            <label>العدد:</label>
+            <input type="number" id="pQuantity" value="1" min="1" style="width:100%; padding:10px; margin-bottom:20px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+            
+            <button onclick="submitOrder()" style="background:#25d366; color:white; padding:12px; border:none; border-radius:8px; width:100%; font-weight:bold; cursor:pointer;">إرسال للواتساب</button>
+            <button onclick="document.getElementById('orderModal').style.display='none'" style="margin-top:10px; background:none; border:none; color:#666; cursor:pointer; width:100%;">إغلاق</button>
+        </div>
+    </div>
+
+    <!-- السكريبتات -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const userDataString = localStorage.getItem('loggedInUser');
+            const authLink = document.getElementById('authLink');
+            const authText = document.getElementById('authText');
+            const logoutBtn = document.getElementById('logoutBtn');
+
+            if (userDataString) {
+                try {
+                    const userData = JSON.parse(userDataString);
+                    if (authText) authText.innerText = userData.name;
+                    if (authLink) authLink.href = "dashboard.html";
+                    if (logoutBtn) logoutBtn.style.display = 'inline-block';
+                } catch (e) {
+                    console.error("خطأ", e);
+                }
+            } else {
+                if (authLink) authLink.href = "login.html";
+            }
+
+            // إنشاء التبويبات العلوية
+            const nav = document.createElement('nav');
+            nav.className = 'nav-container';
+            const all = document.createElement('a');
+            all.innerText = "الكل";
+            all.href = "#";
+            nav.appendChild(all);
+
+            document.querySelectorAll('.section-title').forEach((title, index) => {
+                title.id = "section-" + index;
+                const link = document.createElement('a');
+                link.innerText = title.innerText;
+                link.href = "#section-" + index;
+                nav.appendChild(link);
+            });
+            document.body.insertBefore(nav, document.body.firstChild);
+        });
+
+        function logout() {
+            localStorage.removeItem('loggedInUser');
+            window.location.reload();
+        }
+
+        function submitOrder() {
+            // 1. جلب بيانات العميل المسجل حالياً
+            const userDataString = localStorage.getItem('loggedInUser');
+            if (!userDataString) {
+                alert('الرجاء تسجيل الدخول أولاً');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            let userData;
+            try {
+                userData = JSON.parse(userDataString);
+            } catch (e) {
+                userData = {};
+            }
+
+            const userName = userData.name || userData.username || "عميل غير معروف";
+            const userPhone = userData.phone || "";
+
+            // 2. قراءة حقول الإدخال من نموذج الطلب
+            const urlField = document.getElementById('pUrl');
+            const colorField = document.getElementById('pColor');
+            const sizeField = document.getElementById('pSize');
+            const quantityField = document.getElementById('pQuantity');
+            const priceField = document.getElementById('pPrice');
+
+            const url = urlField ? urlField.value.trim() : '';
+            const color = colorField ? colorField.value.trim() : 'غير محدد';
+            const size = sizeField ? sizeField.value.trim() : 'غير محدد';
+            const quantity = quantityField ? quantityField.value.trim() : '1';
+            const priceStr = priceField ? priceField.value.trim() : '$0.00';
+
+            if (!url) {
+                alert('الرجاء إدخال رابط المنتج على الأقل.');
+                return;
+            }
+
+            // 3. تجهيز كائن الطلب الجديد بالهيكل الذي تتوقعه لوحة التحكم
+            const newOrder = {
+                id: 'MW-' + Math.floor(1000 + Math.random() * 9000),
+                date: new Date().toLocaleString('ar-SA', { hour12: true }),
+                url: url,
+                color: color,
+                size: size,
+                quantity: quantity,
+                price: priceStr.includes('$') ? priceStr : '$' + priceStr,
+                status: 'قيد المعالجة'
+            };
+
+            // 4. ربط الطلب بملف العميل في adminCustomersList لتظهر في لوحة التحكم تلقائياً
+            let adminCustomersList = JSON.parse(localStorage.getItem('adminCustomersList')) || [];
+            
+            // البحث عن العميل إما برقم الهاتـف أو بالاسم
+            let customerIndex = adminCustomersList.findIndex(c => (userPhone && c.phone === userPhone) || c.name === userName);
+
+            if (customerIndex !== -1) {
+                // إذا كان العميل موجوداً مسبقاً، نضيف الطلب لقائمته
+                if (!adminCustomersList[customerIndex].orders) {
+                    adminCustomersList[customerIndex].orders = [];
+                }
+                adminCustomersList[customerIndex].orders.push(newOrder);
+            } else {
+                // إذا لم يكن موجوداً في القائمة، نقوم بإنشاء سجل جديد له مع طلبه الأول
+                adminCustomersList.push({
+                    name: userName,
+                    phone: userPhone,
+                    address: userData.address || '',
+                    orders: [newOrder]
+                });
+            }
+
+            // حفظ التحديثات في الـ localStorage
+            localStorage.setItem('adminCustomersList', JSON.stringify(adminCustomersList));
+
+            // 5. تجهيز رسالة الواتساب وإرسالها
+            let message = `*طلب جديد عبر منصة MeshWar* 🛒\n\n`;
+            message += `👤 *الاسم:* ${userName}\n`;
+            if (userPhone) message += `📱 *الهاتف:* ${userPhone}\n`;
+            message += `🆔 *رقم الطلب:* ${newOrder.id}\n`;
+            message += `🔗 *رابط المنتج:* ${url}\n`;
+            message += `🎨 *اللون:* ${color}\n`;
+            message += `📏 *المقاس:* ${size}\n`;
+            message += `📦 *العدد:* ${quantity}\n`;
+            message += `💰 *السعر التقديري:* ${newOrder.price}\n`;
+
+            const whatsappNumber = "905521855554";
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappURL = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+
+            // فتح واتساب
+            window.open(whatsappURL, '_blank');
+
+            // 6. تفريغ الحقول وإغلاق النافذة المنبثقة للطلب
+            if (urlField) urlField.value = '';
+            if (colorField) colorField.value = '';
+            if (sizeField) sizeField.value = '';
+            if (quantityField) quantityField.value = '1';
+
+            const orderModal = document.getElementById('orderModal');
+            if (orderModal) {
+                orderModal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeshWar - تسجيل حساب جديد</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        .register-container, .verify-container {
+            background: white;
+            padding: 35px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 500px;
+            box-sizing: border-box;
+            border-top: 5px solid #cc0000;
+        }
+
+        .verify-container {
+            display: none; /* مخفية حتى يتم الضغط على إرسال الكود */
+        }
+        
+        .logo-area {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .logo-area h2 {
+            color: #cc0000;
+            margin: 0;
+            font-size: 26px;
+            font-weight: bold;
+        }
+        
+        .logo-area p {
+            color: #666;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .required-star {
+            color: #cc0000;
+            margin-right: 3px;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background-color: #f8fafc;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #cc0000;
+            background-color: white;
+            box-shadow: 0 0 0 3px rgba(204, 0, 0, 0.1);
+        }
+
+        .phone-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .phone-container select {
+            width: 170px; /* مساحة ممتازة لعرض أسماء الدول بوضوح */
+            font-weight: bold;
+        }
+
+        .phone-container input {
+            flex: 1;
+        }
+        
+        .btn-action {
+            width: 100%;
+            background-color: #cc0000;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            margin-top: 10px;
+        }
+        
+        .btn-action:hover {
+            background-color: #990000;
+        }
+
+        .btn-action:active {
+            transform: scale(0.98);
+        }
+
+        .code-inputs {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            direction: ltr;
+            margin: 20px 0;
+        }
+
+        .code-inputs input {
+            width: 50px;
+            height: 50px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #f8fafc;
+        }
+
+        .code-inputs input:focus {
+            outline: none;
+            border-color: #cc0000;
+            box-shadow: 0 0 0 3px rgba(204, 0, 0, 0.1);
+            background-color: white;
+        }
+        
+        .form-footer {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 14px;
+            color: #718096;
+        }
+        
+        .form-footer a {
+            color: #003366;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="register-container" id="registerStep">
+        <div class="logo-area">
+            <h2>منصة MeshWar</h2>
+            <p>أنشئ حسابك وتلقَّ رمز التفعيل عبر SMS</p>
+        </div>
+        
+        <form id="registerForm" onsubmit="handleRegister(event)">
+            <div class="form-group">
+                <label for="fullName">الاسم الكامل <span class="required-star">*</span></label>
+                <input type="text" id="fullName" placeholder="الاسم الثنائي أو الثلاثي" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">رقم الهاتف <span class="required-star">*</span></label>
+                <div class="phone-container">
+                    <select id="countryCode" required>
+                        <option value="+964" selected>العراق (+964)</option>
+                        <option value="+90">تركيا (+90)</option>
+                        <option value="+966">السعودية (+966)</option>
+                        <option value="+971">الإمارات (+971)</option>
+                        <option value="+965">الكويت (+965)</option>
+                        <option value="+974">قطر (+974)</option>
+                        <option value="+968">عُمان (+968)</option>
+                        <option value="+973">البحرين (+973)</option>
+                        <option value="+962">الأردن (+962)</option>
+                        <option value="+961">لبنان (+961)</option>
+                        <option value="+963">سوريا (+963)</option>
+                        <option value="+20">مصر (+20)</option>
+                        <option value="+212">المغرب (+212)</option>
+                        <option value="+213">الجزائر (+213)</option>
+                        <option value="+216">تونس (+216)</option>
+                        <option value="+218">ليبيا (+218)</option>
+                        <option value="+970">فلسطين (+970)</option>
+                        <option value="+967">اليمن (+967)</option>
+                        <option value="+249">السودان (+249)</option>
+                        <option value="+1">أمريكا / كندا (+1)</option>
+                        <option value="+44">بريطانيا (+44)</option>
+                        <option value="+49">ألمانيا (+49)</option>
+                        <option value="+33">فرنسا (+33)</option>
+                        <option value="+31">هولندا (+31)</option>
+                        <option value="+46">السويد (+46)</option>
+                        <option value="+34">إسبانيا (+34)</option>
+                        <option value="+39">إيطاليا (+39)</option>
+                        <option value="+61">أستراليا (+61)</option>
+                        <option value="+7">روسيا (+7)</option>
+                        <option value="+86">الصين (+86)</option>
+                    </select>
+                    <input type="tel" id="phone" placeholder="7701234567" required pattern="[0-9]{7,12}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">البريد الإلكتروني (اختياري)</label>
+                <input type="email" id="email" placeholder="example@mail.com (ليس إجبارياً)">
+            </div>
+            
+            <div class="form-group">
+                <label for="address">العنوان الكامل <span class="required-star">*</span></label>
+                <input type="text" id="address" placeholder="المحافظة - المنطقة - العنوان" required>
+            </div>
+<button type="submit" class="btn-action">إرسال رمز التحقق عبر SMS</button>
+        </form>
+        
+        <div class="form-footer">
+            لديك حساب بالفعل؟ <a href="login.html">تسجيل الدخول</a>
+        </div>
+    </div>
+
+    <div class="verify-container" id="verifyStep">
+        <div class="logo-area">
+            <h2>تأكيد رقم الهاتف</h2>
+            <p id="verifyMessage">تم إرسال رمز تفعيل مكون من 6 أرقام عبر SMS</p>
+        </div>
+        
+        <form id="verifyForm" onsubmit="handleVerify(event)">
+            <label style="font-weight: bold; font-size: 14px; color: #4a5568;">أدخل رمز التفعيل المتكون من 6 أرقام:</label>
+            
+            <div class="code-inputs">
+                <input type="text" maxlength="1" required onkeyup="moveNext(this, 'c2')">
+                <input type="text" id="c2" maxlength="1" required onkeyup="moveNext(this, 'c3')">
+                <input type="text" id="c3" maxlength="1" required onkeyup="moveNext(this, 'c4')">
+                <input type="text" id="c4" maxlength="1" required onkeyup="moveNext(this, 'c5')">
+                <input type="text" id="c5" maxlength="1" required onkeyup="moveNext(this, 'c6')">
+                <input type="text" id="c6" maxlength="1" required>
+            </div>
+            
+            <button type="submit" class="btn-action">تأكيد الرمز والدخول إلى النظام</button>
+        </form>
+        
+        <div class="form-footer">
+            لم يصلك الكود؟ <a href="#" onclick="resendCode()">إعادة إرسال الرمز</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { normalizePhone, sendPhoneOtp, verifyPhoneOtp, syncLegacySession } from './js/auth-service.js';
+        let pendingPhone = ''; let registrationData = null;
+        window.handleRegister = async function(event) {
+            event.preventDefault();
+            const fullName=document.getElementById('fullName').value.trim();
+            const localPhone=document.getElementById('phone').value.trim();
+            const email=document.getElementById('email').value.trim();
+            const address=document.getElementById('address').value.trim();
+            const select=document.getElementById('countryCode');
+            pendingPhone=normalizePhone(select.value,localPhone);
+            registrationData={phone:pendingPhone,fullName,country:select.selectedOptions[0].text.split('(')[0].trim(),address,email};
+            try { await sendPhoneOtp(registrationData); document.getElementById('verifyMessage').textContent=`تم إرسال رمز التحقق إلى ${pendingPhone}`; document.getElementById('registerStep').style.display='none'; document.getElementById('verifyStep').style.display='block'; }
+            catch(e){ alert(e.message); }
+        };
+        window.handleVerify = async function(event) {
+            event.preventDefault();
+            const token=Array.from(document.querySelectorAll('#verifyForm .code-inputs input')).map(i=>i.value).join('');
+            if(!/^\d{6}$/.test(token)) return alert('أدخل رمزاً من 6 أرقام.');
+            try { await verifyPhoneOtp(pendingPhone,token); await syncLegacySession(); alert('تم إنشاء الحساب بنجاح.'); location.href='dashboard.html'; }
+            catch(e){ alert(e.message); }
+        };
+        window.resendCode = async function(){ try{await sendPhoneOtp(registrationData||{phone:pendingPhone});alert('تمت إعادة إرسال الرمز.')}catch(e){alert(e.message)} };
+        window.moveNext = function(current,nextId){current.value=current.value.replace(/\D/g,'').slice(0,1);if(current.value&&nextId)document.getElementById(nextId)?.focus()};
+    </script>
+
+</body>
+</html>

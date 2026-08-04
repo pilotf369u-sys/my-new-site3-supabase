@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>طلب جديد - MeshWar</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --primary-red: #cc0000; --dark-blue: #003366; --bg-light: #f4f6f9; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-light); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .order-box { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h2 { text-align: center; color: var(--dark-blue); margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; font-size: 14px; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: inherit; }
+        input:focus, textarea:focus { border-color: var(--dark-blue); outline: none; }
+        .user-info-notice { background: #e8f4fd; border: 1px solid #b6e0fe; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; color: #0369a1; line-height: 1.6; }
+        .btn-submit { width: 100%; padding: 12px; background: var(--primary-red); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: background 0.2s; }
+        .btn-submit:hover { background: #a30000; }
+        .back-link { display: block; text-align: center; margin-top: 15px; color: #64748b; text-decoration: none; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="order-box">
+    <h2><i class="fa-solid fa-cart-plus"></i> تقديم طلب جديد</h2>
+    
+    <div class="user-info-notice" id="userInfoNotice">
+        <i class="fa-solid fa-circle-info"></i> مرحباً بك، يتم استخدام بيانات حسابك المسجل (الاسم، رقم الهاتف، والعنوان) تلقائياً لهذا الطلب.
+    </div>
+
+    <div class="form-group">
+        <label>رابط المنتج المطلوبة *</label>
+        <input type="url" id="pUrl" placeholder="أصص لصق رابط المنتج هنا..." required>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="form-group">
+            <label>اللون (اختياري)</label>
+            <input type="text" id="pColor" placeholder="مثال: أسود، أحمر">
+        </div>
+        <div class="form-group">
+            <label>المقاس (اختياري)</label>
+            <input type="text" id="pSize" placeholder="مثال: L, XL, 42">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>العدد</label>
+        <input type="number" id="pQuantity" value="1" min="1">
+    </div>
+
+    <div class="form-group">
+        <label>ملاحظات إضافية</label>
+        <textarea id="pNotes" rows="2" placeholder="أي تفاصيل أخرى تود إضافتها للمنتج..."></textarea>
+    </div>
+
+    <button class="btn-submit" onclick="submitOrder()">تأكيد وإرسال الطلب</button>
+    <a href="dashboard.html" class="back-link"><i class="fa-solid fa-arrow-right"></i> العودة لوحة التحكم</a>
+</div>
+
+<script>
+    window.onload = function() {
+        // التأكد من تسجيل دخول العميل
+        const userData = JSON.parse(localStorage.getItem('loggedInUser'));
+        if (!userData) {
+            alert('يجب تسجيل الدخول أولاً لتقديم الطلب.');
+            window.location.href = 'login.html';
+        }
+    };
+
+    function submitOrder() {
+        const userData = JSON.parse(localStorage.getItem('loggedInUser'));
+        const productUrl = document.getElementById('pUrl').value.trim();
+        
+        if (!productUrl) {
+            alert('الرجاء إدخال رابط المنتج على الأقل.');
+            return;
+        }
+
+        // إنشاء كائن الطلب الجديد
+        const newOrder = {
+            id: 'MW-' + Math.floor(100000 + Math.random() * 900000), // رقم طلب عشوائي فريد
+            url: productUrl,
+            color: document.getElementById('pColor').value.trim() || 'غير محدد',
+            size: document.getElementById('pSize').value.trim() || 'غير محدد',
+            quantity: document.getElementById('pQuantity').value.trim() || '1',
+            notes: document.getElementById('pNotes').value.trim(),
+            price: '$0.00', // يتم تحديثه لاحقاً من قبل الإدارة
+            status: 'قيد المعالجة',
+            date: new Date().toLocaleDateString('ar-SA')
+        };
+
+        // 1. تحديث قائمة طلبات العميل الشخصية (في لوحة تحكمه)
+        if (!userData.orders) {
+            userData.orders = [];
+        }
+        userData.orders.push(newOrder);
+        localStorage.setItem('loggedInUser', JSON.stringify(userData));
+
+        // 2. تحديث قاعدة بيانات العملاء العامة (adminCustomersList) لكي يراه الموظف في لوحة تحكم الإدارة
+        let adminCustomersList = JSON.parse(localStorage.getItem('adminCustomersList')) || [];
+        let customerIndex = adminCustomersList.findIndex(c => c.phone === userData.phone || c.name === userData.name);
+
+        if (customerIndex !== -1) {
+            if (!adminCustomersList[customerIndex].orders) {
+                adminCustomersList[customerIndex].orders = [];
+            }
+            adminCustomersList[customerIndex].orders.push(newOrder);
+        } else {
+            // إذا لم يكن موجوداً بالقائمة العامة، يتم إضافته مع طلبه
+            userData.orders = [newOrder];
+            adminCustomersList.push(userData);
+        }
+        localStorage.setItem('adminCustomersList', JSON.stringify(adminCustomersList));
+
+        alert('تم إرسال طلبك بنجاح! سيتم مراجعته من قبل الإدارة قريباً.');
+        window.location.href = 'dashboard.html';
+    }
+</script>
+
+</body>
+</html>

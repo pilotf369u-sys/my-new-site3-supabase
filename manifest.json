@@ -1,0 +1,21 @@
+{
+  "name": "MeshWar",
+  "short_name": "MeshWar",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "images/meshwar-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "share_target": {
+    "action": "index.html",
+    "method": "GET",
+    "params": {
+      "text": "link"
+    }
+  }
+}

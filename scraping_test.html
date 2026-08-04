@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مختبر تجربة الروابط - MeshWar</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 { color: #cc0000; }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            max-width: 1000px;
+            margin: 30px auto;
+        }
+        /* تحويل الكرت إلى زر قابل للضغط */
+        .store-link {
+            text-decoration: none; /* إزالة الخط المعتاد تحت الروابط */
+            color: inherit;
+        }
+        .store-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            border: 1px solid #ddd;
+        }
+        /* تأثير فخم عند تحريك الماوس فوق المتجر */
+        .store-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(204, 0, 0, 0.2);
+            border-color: #cc0000;
+        }
+        .store-name {
+            margin-top: 10px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>مختبر تفعيل روابط المتاجر الكبرى (MeshWar)</h1>
+    <p>اضغط على أي متجر للتأكد من أنه يفتح الموقع الرسمي التركي في صفحة جديدة</p>
+
+    <div class="grid-container">
+        
+        <a href="https://www.trendyol.com" target="_blank" class="store-link">
+            <div class="store-card">
+                <div class="store-name">Trendyol</div>
+            </div>
+        </a>
+
+        <a href="https://www.zara.com/tr/en/" target="_blank" class="store-link">
+            <div class="store-card">
+                <div class="store-name">Zara</div>
+            </div>
+        </a>
+
+        <a href="https://www.lcwaikiki.com" target="_blank" class="store-link">
+            <div class="store-card">
+                <div class="store-name">LC Waikiki</div>
+            </div>
+        </a>
+
+        <a href="https://tr.hm.com" target="_blank" class="store-link">
+            <div class="store-card">
+                <div class="store-name">H&M</div>
+            </div>
+        </a>
+
+    </div>
+
+</body>
+</html>

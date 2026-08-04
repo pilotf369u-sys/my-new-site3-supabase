@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>السجل المحاسبي ومتابعة الفروع والشركات الموزعة</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; display: flex; }
+        
+        /* القائمة الجانبية الثابتة */
+        .sidebar { width: 250px; background: #2c3e50; color: white; min-height: 100vh; padding: 20px; box-sizing: border-box; position: fixed; right: 0; top: 0; }
+        .sidebar h2 { font-size: 18px; border-bottom: 1px solid #4e6d8d; padding-bottom: 10px; margin-bottom: 20px; text-align: center; color: #fff; }
+        .sidebar a { display: block; color: #ecf0f1; text-decoration: none; padding: 10px 15px; margin-bottom: 8px; border-radius: 4px; transition: 0.2s; font-size: 14px; background: #34495e; border-right: 4px solid #1abc9c; }
+        .sidebar a:hover { background: #3d566e; color: #fff; }
+        .sidebar a.active { background: #1abc9c; color: #fff; border-right: 4px solid #fff; font-weight: bold; }
+        .btn-red-logout { background: #c0392b !important; text-align: center; margin-top: 30px; border-right: none !important; }
+
+        /* المحتوى الرئيسي */
+        .main-content { margin-right: 250px; padding: 30px; width: calc(100% - 250px); box-sizing: border-box; }
+        .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        h2, h3 { color: #2c3e50; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        table, th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background: #f2f2f2; font-size: 13px; }
+        td { font-size: 13px; }
+        
+        .btn-view { background: #2980b9; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-collect { background: #27ae60; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .btn-print { background: #8e44ad; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; float: left; margin-left: 10px; }
+        
+        .report-section { margin-top: 30px; background: #f9f9f9; padding: 20px; border-radius: 6px; border: 1px solid #ddd; display: none; }
+        .summary-box { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+        .card { background: #fff; padding: 15px; border-radius: 5px; border: 1px solid #ccc; flex: 1; min-width: 200px; text-align: center; }
+
+        /* تنسيقات الطباعة (PDF) */
+        @media print {
+            body { background: white; display: block; }
+            .sidebar, .btn-print, .btn-view, .btn-collect, button, .no-print { display: none !important; }
+            .main-content { margin-right: 0; width: 100%; padding: 0; }
+            .container { box-shadow: none; padding: 0; }
+            
+            body.print-general #branchReportSection { display: none !important; }
+            body.print-general #generalBranchReportArea { display: block !important; }
+
+            body.print-single #generalBranchReportArea { display: none !important; }
+            body.print-single #branchReportSection { display: block !important; border: none; background: white; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- القائمة الجانبية الثابتة -->
+    <div class="sidebar">
+        <h2>لوحة الإدارة</h2>
+        <a href="admin-dashboard.html">إدارة الطلبات</a>
+        <a href="admin-dashboard.html">إدارة الموظفين</a>
+        <a href="admin-delivery-reports.html">تقرير ومتابعة المندوبين</a>
+        <a href="admin-branches.html">إدارة الفروع والمخازن</a>
+        <a href="admin-branch-reports.html" class="active">تقرير ومتابعة الفروع</a>
+        <a href="admin-dashboard.html">أسعار صرف العملات</a>
+        <a href="admin-dashboard.html">إدارة المتاجر</a>
+        <a href="admin-dashboard.html">إدارة العملاء</a>
+        <a href="login.html" class="btn-red-logout">تسجيل الخروج</a>
+    </div>
+
+    <!-- المحتوى الرئيسي -->
+    <div class="main-content">
+        <div class="container">
+            <h2>لوحة الأدمن - السجل المحاسبي ومتابعة الفروع والشركات الموزعة</h2>
+            <p>متابعة حركة الفروع والشركات الموزعة، المبالغ المحصلة، وما تبقى في ذمتهم المالية:</p>
+            
+            <!-- السجل العام للفروع -->
+            <div id="generalBranchReportArea">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>اسم الفرع / الشركة</th>
+                            <th>رقم الهاتف</th>
+                            <th>إجمالي الشحنات</th>
+                            <th>إجمالي المبالغ</th>
+                            <th>المبالغ المسلمة (المحصلة)</th>
+                            <th>المتبقي في الذمة</th>
+                            <th class="no-print">إجراء السجل المحاسبي</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminBranchTable">
+                        <tr><td colspan="7">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+                <div style="margin-top: 20px; overflow: hidden;" class="no-print">
+                    <button class="btn-print" onclick="printGeneralBranchReport()">🖨️ طباعة السجل العام للفروع (PDF)</button>
+                </div>
+            </div>
+
+            <!-- قسم السجل التفصيلي للفرع المحدد -->
+            <div id="branchReportSection" class="report-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                    <h3 id="reportBranchTitle" style="margin: 0;">السجل المالي وحركات الفرع: <span></span></h3>
+                    <button class="btn-print" onclick="printSingleBranchReport()" style="float: none;">🖨️ طباعة تقرير الفرع (PDF)</button>
+                </div>
+                
+                <div class="summary-box" style="margin-top: 15px;">
+                    <div class="card">
+                        <h4>إجمالي الشحنات</h4>
+                        <p id="repBranchTotalShipments" style="font-size: 18px; font-weight: bold; color: #2c3e50;">0</p>
+                    </div>
+                    <div class="card">
+                        <h4>إجمالي المبالغ المطلوبة</h4>
+                        <p id="repBranchTotalAmount" style="font-size: 18px; font-weight: bold; color: #e67e22;">$0.00</p>
+                    </div>
+                    <div class="card">
+                        <h4>المبالغ المسلمة (المحصلة)</h4>
+                        <p id="repBranchCollectedAmount" style="font-size: 18px; font-weight: bold; color: #27ae60;">$0.00</p>
+                    </div>
+                    <div class="card" style="background: #fadbd8;">
+                        <h4 style="color: #c0392b;">المتبقي في ذمة الفرع</h4>
+                        <p id="repBranchRemainingAmount" style="font-size: 18px; font-weight: bold; color: #c0392b;">$0.00</p>
+                    </div>
+                </div>
+
+                <h4>تفاصيل الشحنات وحالة التحصيل المالي للفرع:</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم الشحنة</th>
+                            <th>اسم العميل</th>
+                            <th>الهاتف والعنوان</th>
+                            <th>المبلغ</th>
+                            <th>حالة الطلب</th>
+                            <th>الحالة المالية (الذمة)</th>
+                            <th>تاريخ ووقت التوريد</th>
+                            <th>إجراء التسجيل المحاسبي</th>
+                        </tr>
+                    </thead>
+                    <tbody id="repBranchOrdersBody">
+                        <tr><td colspan="8">اختر فرعاً لعرض السجل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let activeBranchName = "";
+
+        function loadAdminBranchList() {
+            let branchList = JSON.parse(localStorage.getItem('branchList')) || [];
+            let customers = JSON.parse(localStorage.getItem('adminCustomersList')) || [];
+            let tbody = document.getElementById('adminBranchTable');
+            tbody.innerHTML = '';
+
+            if (branchList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7">لا توجد فروع أو شركات مسجلة في النظام حالياً</td></tr>`;
+                return;
+            }
+
+            branchList.forEach((br) => {
+                let bShipments = 0;
+                let bTotal = 0;
+                let bCollected = 0;
+
+                customers.forEach(cust => {
+                    if (cust.orders && cust.orders.length > 0) {
+                        cust.orders.forEach(ord => {
+                            if (ord.assignedBranch === br.name) {
+                                bShipments++;
+                                let rawPrice = ord.price ? parseFloat(ord.price.replace(/[^0-9.]/g, '')) || 0 : 0;
+                                bTotal += rawPrice;
+                                if (ord.branchFinancialStatus === "تم التوريد للخزينة") {
+                                    bCollected += rawPrice;
+                                }
+                            }
+                        });
+                    }
+                });
+
+                let bRemaining = bTotal - bCollected;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><b>${br.name}</b></td>
+                        <td dir="ltr">${br.phone}</td>
+                        <td><b>${bShipments}</b></td>
+                        <td><b style="color: #e67e22;">$${bTotal.toFixed(2)}</b></td>
+                        <td><b style="color: #27ae60;">$${bCollected.toFixed(2)}</b></td>
+                        <td><b style="color: #c0392b;">$${bRemaining.toFixed(2)}</b></td>
+                        <td class="no-print">
+                            <button class="btn-view" onclick="viewBranchReport('${br.name}')">عرض السجل المحاسبي والمبالغ</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function viewBranchReport(branchName) {
+            activeBranchName = branchName;
+            let reportSec = document.getElementById('branchReportSection');
+            reportSec.style.display = 'block';
+            document.getElementById('reportBranchTitle').querySelector('span').innerText = branchName;
+
+            let customers = JSON.parse(localStorage.getItem('adminCustomersList')) || [];
+            let repOrdersBody = document.getElementById('repBranchOrdersBody');
+            repOrdersBody.innerHTML = '';
+
+            let totalShipmentsCount = 0;
+            let totalAmountSum = 0;
+            let collectedAmountSum = 0;
+            let hasRecords = false;
+
+            customers.forEach((cust, cIdx) => {
+                if (cust.orders && cust.orders.length > 0) {
+                    cust.orders.forEach((ord, oIdx) => {
+                        if (ord.assignedBranch === branchName) {
+                            hasRecords = true;
+                            totalShipmentsCount++;
+
+                            let rawPrice = ord.price ? parseFloat(ord.price.replace(/[^0-9.]/g, '')) || 0 : 0;
+                            totalAmountSum += rawPrice;
+
+                            let isCollected = ord.branchFinancialStatus === "تم التوريد للخزينة";
+                            if (isCollected) {
+                                collectedAmountSum += rawPrice;
+                            }
+
+                            let financialBadge = isCollected ? 
+                                `<span style="color: #27ae60; font-weight: bold;">تم توريده للخزينة</span>` : 
+                                `<span style="color: #c0392b; font-weight: bold;">بذمة الفرع (معلق)</span>`;
+
+                            let collectDateText = ord.branchCollectDate ? `<span dir="ltr" style="font-size: 11px;">${ord.branchCollectDate}</span>` : '---';
+
+                            let actionBtn = !isCollected ? 
+                                `<button class="btn-collect" onclick="markBranchAsCollected(${cIdx}, ${oIdx})">استلام وتوريد المبلغ</button>` : 
+                                `<button style="background: #95a5a6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;" onclick="cancelBranchCollection(${cIdx}, ${oIdx})">إلغاء التوريد</button>`;
+
+                            repOrdersBody.innerHTML += `
+                                <tr>
+                                    <td><b>${ord.id}</b></td>
+                                    <td>${cust.name}</td>
+                                    <td style="text-align: right;"><span dir="ltr">${cust.phone}</span><br><small>${cust.address || ''}</small></td>
+                                    <td><b style="color: #2980b9;">${ord.price || '$0.00'}</b></td>
+                                    <td><span style="padding: 3px 6px; background: #e2f0d9; border-radius: 4px; font-size: 12px; font-weight: bold;">${ord.status}</span></td>
+                                    <td>${financialBadge}</td>
+                                    <td>${collectDateText}</td>
+                                    <td>${actionBtn}</td>
+                                </tr>
+                            `;
+                        }
+                    });
+                }
+            });
+
+            let remainingAmount = totalAmountSum - collectedAmountSum;
+
+            document.getElementById('repBranchTotalShipments').innerText = totalShipmentsCount;
+            document.getElementById('repBranchTotalAmount').innerText = `$${totalAmountSum.toFixed(2)}`;
+            document.getElementById('repBranchCollectedAmount').innerText = `$${collectedAmountSum.toFixed(2)}`;
+            document.getElementById('repBranchRemainingAmount').innerText = `$${remainingAmount.toFixed(2)}`;
+
+            if (!hasRecords) {
+                repOrdersBody.innerHTML = `<tr><td colspan="8">لا توجد شحنات مسندة لهذا الفرع حتى الآن</td></tr>`;
+            }
+
+            reportSec.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function markBranchAsCollected(cIdx, oIdx) {
+            let customers = JSON.parse(localStorage.getItem('adminCustomersList')) || [];
+            customers[cIdx].orders[oIdx].branchFinancialStatus = "تم التوريد للخزينة";
+            customers[cIdx].orders[oIdx].branchCollectDate = new Date().toLocaleString('en-GB', { hour12: false });
+
+            localStorage.setItem('adminCustomersList', JSON.stringify(customers));
+            alert('تم تسجيل توريد المبلغ بنجاح وتحديث الذمة المالية للفرع');
+            loadAdminBranchList();
+            viewBranchReport(activeBranchName);
+        }
+
+        function cancelBranchCollection(cIdx, oIdx) {
+            let customers = JSON.parse(localStorage.getItem('adminCustomersList')) || [];
+            customers[cIdx].orders[oIdx].branchFinancialStatus = "معلق";
+            customers[cIdx].orders[oIdx].branchCollectDate = "";
+
+            localStorage.setItem('adminCustomersList', JSON.stringify(customers));
+            alert('تم إلغاء توريد المبلغ وإعادته لذمة الفرع');
+            loadAdminBranchList();
+            viewBranchReport(activeBranchName);
+        }
+
+        function printGeneralBranchReport() {
+            document.body.className = "print-general";
+            window.print();
+            document.body.className = "";
+        }
+
+        function printSingleBranchReport() {
+            document.body.className = "print-single";
+            window.print();
+            document.body.className = "";
+        }
+
+        window.onload = function() {
+            loadAdminBranchList();
+        }
+    </script>
+</body>
+</html>

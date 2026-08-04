@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تسوق من Meshwar</title>
+    <style>
+    body { 
+        font-family: 'Segoe UI', Tahoma, sans-serif; 
+        background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); 
+        margin: 0; 
+        padding-bottom: 50px; 
+        min-height: 100vh;
+    }
+
+    .search-container { text-align: center; margin: 30px 0; }
+    .search-container input { 
+        padding: 15px 25px; 
+        width: 85%; 
+        max-width: 450px; 
+        border-radius: 50px; 
+        border: none; 
+        outline: none; 
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15); 
+        background-color: rgba(255, 255, 255, 0.9);
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+    .search-container input:focus { 
+        box-shadow: 0 15px 25px rgba(0,0,0,0.2);
+        transform: translateY(-2px);
+    }
+    
+    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, 200px); justify-content: center; gap: 35px; padding: 20px; }
+    
+    .product-card { 
+        width: 200px; border-radius: 20px; padding: 15px; text-align: center; 
+        background: white; transition: transform 0.3s ease;
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+    .product-card:hover { transform: translateY(-10px); }
+    
+    .product-card img { width: 100%; height: 150px; object-fit: contain; border-radius: 15px; margin-bottom: 10px; }
+    .product-info { margin: 10px 0; }
+    .product-code { display: block; font-weight: bold; color: #777; font-size: 0.9em; }
+    .product-price { display: block; color: #e63946; font-weight: bold; font-size: 1.1em; }
+    
+    .whatsapp-btn { 
+        background: linear-gradient(to right, #25D366, #128C7E); 
+        color: white; padding: 12px; border: none; border-radius: 10px; 
+        cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px;
+        transition: opacity 0.3s;
+    }
+    .whatsapp-btn:hover { opacity: 0.9; }
+
+    .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; backdrop-filter: blur(5px); }
+    .modal-content { background:white; width:90%; max-width:350px; margin:50px auto; padding:25px; border-radius:20px; text-align: right; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+    
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; font-size: 14px; margin-bottom: 5px; font-weight: bold; color: #444; }
+    .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; background-color: #f9f9f9; }
+    .form-group input[readonly] { background-color: #eef2f5; color: #555; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+    <h1 style="text-align: center;">مرحباً بك في متجر Meshwar</h1>
+
+    <div class="search-container">
+        <input type="text" id="searchInput" onkeyup="renderProducts()" placeholder="🔍 ابحث عن منتج بالاسم أو الكود...">
+    </div>
+
+    <div class="product-grid" id="product-container"></div>
+
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <h3 style="text-align:center;">إرسال تفاصيل الطلب</h3>
+            
+            <!-- حقول بيانات الزبون المسجل (مغلقة وتعبأ تلقائياً من نظام تسجيل الدخول) -->
+            <div class="form-group"><label>الاسم الكريم:</label><input type="text" id="pName" readonly></div>
+            <div class="form-group"><label>رقم الهاتف:</label><input type="tel" id="pPhone" readonly></div>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div class="form-group">
+                    <label>الدولة:</label>
+                    <input type="text" id="pCountry" readonly>
+                </div>
+                <div class="form-group"><label>العنوان:</label><input type="text" id="pAddress" readonly></div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div class="form-group"><label>العدد:</label><input type="number" id="pQuantity" value="1" min="1"></div>
+                <div class="form-group"><label>اللون:</label><input type="text" id="pColor" placeholder="اللون المطلوب"></div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div class="form-group"><label>الحجم/المقاس:</label><input type="text" id="pSize" placeholder="المقاس"></div>
+                <div class="form-group"><label>الوزن:</label><input type="text" id="pWeight" placeholder="الوزن إن وجد"></div>
+            </div>
+
+            <button onclick="submitOrder()" class="whatsapp-btn">تأكيد وإرسال الطلب (واتساب + النظام)</button>
+            <button onclick="document.getElementById('orderModal').style.display='none'" style="margin-top:10px; border:none; background:none; cursor:pointer; width:100%; color:#666;">إغلاق</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { getProducts } from './js/products-service.js';
+        import { getCurrentProfile, saveLegacySession } from './js/auth-service.js';
+        import { addProductToCart } from './js/cart-service.js';
+
+        let products = [];
+        let currentProduct = null;
+        const container = document.getElementById('product-container');
+        const esc = (v='') => String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+
+        function renderProducts() {
+            const term = document.getElementById('searchInput').value.trim().toLowerCase();
+            const filtered = products.filter(p => p.name.toLowerCase().includes(term) || p.code.toLowerCase().includes(term));
+            container.innerHTML = filtered.length ? '' : '<p>لا توجد منتجات مطابقة.</p>';
+            filtered.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                const old = product.old_price_label ? `<span style="text-decoration:line-through;color:#888;font-size:.85em;margin-left:8px">${esc(product.old_price_label)}</span>` : '';
+                card.innerHTML = `<img src="${esc(product.image || '')}" alt="${esc(product.name)}"><h3>${esc(product.name)}</h3><div class="product-info"><span class="product-code">الكود: ${esc(product.code)}</span><div style="margin-top:5px">${old}<span class="product-price" style="display:inline-block">${esc(product.price_label)}</span></div></div><button class="whatsapp-btn">أضف إلى السلة</button>`;
+                card.querySelector('button').addEventListener('click', () => openModal(product));
+                container.appendChild(card);
+            });
+        }
+
+        async function openModal(product) {
+            try {
+                const profile = await getCurrentProfile();
+                if (!profile) { alert('يرجى تسجيل الدخول أولاً.'); location.href='login.html'; return; }
+                saveLegacySession(profile);
+                currentProduct = product;
+                document.getElementById('pName').value = profile.full_name || '';
+                document.getElementById('pPhone').value = profile.phone || '';
+                document.getElementById('pCountry').value = profile.country || 'العراق';
+                document.getElementById('pAddress').value = profile.address || '';
+                document.getElementById('pQuantity').value = '1';
+                document.getElementById('pColor').value = '';
+                document.getElementById('pSize').value = '';
+                document.getElementById('pWeight').value = '';
+                document.getElementById('orderModal').style.display = 'block';
+            } catch (e) { alert(e.message); location.href='login.html'; }
+        }
+
+        async function submitOrder() {
+            if (!currentProduct) return;
+            const quantity = Number.parseInt(document.getElementById('pQuantity').value, 10);
+            const color = document.getElementById('pColor').value.trim();
+            const size = document.getElementById('pSize').value.trim();
+            const weight = document.getElementById('pWeight').value.trim();
+            if (!Number.isInteger(quantity) || quantity < 1 || !color) { alert('يرجى إدخال العدد واللون المطلوب.'); return; }
+            try {
+                await addProductToCart({ productId: currentProduct.id, quantity, unitPrice: currentProduct.price, color, size, weight });
+                document.getElementById('orderModal').style.display='none';
+                alert('تمت إضافة المنتج إلى السلة بنجاح.');
+            } catch (e) { alert(e.message); }
+        }
+
+        window.renderProducts = renderProducts;
+        window.submitOrder = submitOrder;
+        container.innerHTML = '<p>جاري تحميل المنتجات...</p>';
+        getProducts().then(data => { products=data; renderProducts(); }).catch(e => { console.error(e); container.innerHTML='<p>تعذر تحميل المنتجات من Supabase.</p>'; });
+    </script>
+</body>
+</html>

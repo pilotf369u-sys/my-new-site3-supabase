@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم الفرع - إدارة الطلبات والمندوبين</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h2 { color: #2c3e50; display: inline-block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 30px; }
+        table, th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background: #f2f2f2; font-size: 14px; }
+        .btn-red { background: #c0392b; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; float: left; text-decoration: none; font-weight: bold; margin-left: 10px; }
+        .btn-history { background: #8e44ad; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; float: left; text-decoration: none; font-weight: bold; }
+        select, input[type="text"] { padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; }
+        button.action-btn { background: #27ae60; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button.report-btn { background: #2980b9; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 5px; }
+        .section-title { background: #34495e; color: white; padding: 10px 15px; border-radius: 5px; margin-top: 20px; font-size: 16px; }
+        
+        /* تنسيق النوافذ المنبثقة (Modals) */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fff; margin: 5% auto; padding: 20px; border-radius: 8px; width: 75%; max-height: 80vh; overflow-y: auto; text-align: right; }
+        .close-modal { color: #aaa; float: left; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-modal:hover { color: black; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="login.html" class="btn-red">تسجيل الخروج</a>
+        <button class="btn-history" onclick="openSettlementHistoryModal()">📜 سجل التصفيات السابقة</button>
+        <h2 id="branchTitle">لوحة تحكم الفرع: جاري التحميل...</h2>
+        <p>إدارة طلبات الفرع، إسناد الشحنات للمندوبين، ومتابعة الحسابات والتقارير المالية.</p>
+
+        <!-- جدول الطلبات المحولة للفرع -->
+        <div class="section-title">📦 إدارة شحنات الفرع وإسنادها للمندوبين</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>رقم الشحنة</th>
+                    <th>اسم العميل والهاتف</th>
+                    <th>المبلغ المطلوب</th>
+                    <th>الحالة والسبب</th>
+                    <th>إسناد إلى مندوب الفرع</th>
+                    <th>إجراء وتحديث الحالة</th>
+                </tr>
+            </thead>
+            <tbody id="branchOrdersBody">
+                <tr><td colspan="6">جاري تحميل الطلبات...</td></tr>
+            </tbody>
+        </table>
+
+        <!-- قسم محاسبة المندوبين المنظم -->
+        <div class="section-title">💰 محاسبة المناديب والذمم المالية (مناديب فرعك الذين لديهم شحنات نشطة فقط)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>اسم المندوب</th>
+                    <th>رقم الهاتف</th>
+                    <th>إجمالي النقدية الحالية في ذمته</th>
+                    <th>الإجراءات (عرض الطلبات، التصفية، والطباعة)</th>
+                </tr>
+            </thead>
+            <tbody id="deliveryAccountingBody">
+                <tr><td colspan="4">جاري التحميل...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- نافذة منبثقة تفاصيل المندوب النشط -->
+    <div id="deliveryModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeDeliveryModal()">&times;</span>
+            <h3 id="modalDeliveryTitle" style="color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px;">تفاصيل حساب المندوب</h3>
+            <div id="modalDeliveryBody"></div>
+        </div>
+    </div>
+
+    <!-- نافذة منبثقة سجل التصفيات والتدقيق للفرع -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeHistoryModal()">&times;</span>
+            <h3 style="color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px;">📜 سجل تصفيات الذمم المالية السابقة (للتدقيق)</h3>
+            <div id="historyModalBody">
+                <!-- سيتم عرض السجلات هنا -->
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة منبثقة عرض تفاصيل وطباعة تصفية سابقة -->
+    <div id="historyDetailModal" class="modal">
+        <div class="modal-content" style="width: 65%;">
+            <span class="close-modal" onclick="closeHistoryDetailModal()">&times;</span>
+            <h3 id="historyDetailTitle" style="color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px;">تفاصيل التصفية السابقة</h3>
+            <div id="historyDetailBody"></div>
+        </div>
+    </div>
+
+    <script>
+        const statusListOptions = `
+            <option value="قيد المعالجة">قيد المعالجة</option>
+            <option value="توزيع داخلي">توزيع داخلي</option>
+            <option value="تم التسليم">تم التسليم</option>
+            <option value="تم رفض الطلب أو عدم التسليم">تم رفض الطلب أو عدم التسليم (مرتج)</option>
+        `;
+
+        function loadBranchDashboard() {
+            let currentBranchName = (localStorage.getItem('loggedBranchName') || '').trim();
+            if (!currentBranchName) {
+                alert('الرجاء تسجيل الدخول بحساب الفرع أولاً');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            document.getElementById('branchTitle').innerText = `لوحة تحكم الفرع: ${currentBranchName}`;
+
+            let customers = JSON.parse(localStorage.getItem('adminCustomersList')) || [];
+            let deliveryList = JSON.parse(localStorage.getItem('deliveryList')) || [];
+            let tbody = document.getElementById('branchOrdersBody');
+            tbody.innerHTML = '';
+
+            let hasOrders = false;
+
+            customers.forEach((cust, custIndex) => {
+                if (cust.orders && cust.orders.length > 0) {
+                    cust.orders.forEach((ord, ordIndex) => {
+                        let ordBranch = (ord.assignedBranch || '').trim();
+                        if (ordBranch === currentBranchName) {
+                            hasOrders = true;
+
+                            let deliveryOptions = `<option value="">اختر مندوب الفرع...</option>`;
+                            deliveryList.forEach(del => {
+                                let delName = (del.name || '').trim();
+                                let ordDel = (ord.assignedDelivery || '').trim();
+                                let selected = (ordDel === delName) ? 'selected' : '';
+                                deliveryOptions += `<option value="${delName}" ${selected}>${delName}</option>`;
+                            });
+
+                            let reasonDisplay = ord.reason ? `<br><span style="color: #c0392b; font-size: 11px;">السبب: ${ord.reason}</span>` : '';
+                            let currentOptionsHtml = statusListOptions.replace(`value="${ord.status}"`, `value="${ord.status}" selected`);
+
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td><b>${ord.id}</b></td>
+                                    <td style="text-align: right;"><b>${cust.name}</b><br><span style="font-size: 12px; color: #666;" dir="ltr">${cust.phone}</span></td>
+                                    <td><b style="color: #2980b9;">${ord.price || '$0.00'}</b></td>
+                                    <td>
+                                        <span style="padding: 3px 8px; background: #fff3cd; border-radius: 4px; font-weight: bold; font-size: 12px;">${ord.status}</span>
+                                        ${reasonDisplay}
+                                    </td>
+                                    <td>
+                                        <select id="del_${custIndex}_${ordIndex}" onchange="assignDelivery(${custIndex}, ${ordIndex})">
+                                            ${deliveryOptions}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select id="status_${custIndex}_${ordIndex}" onchange="checkBranchReason(${custIndex}, ${ordIndex})">
+                                            ${currentOptionsHtml}
+                                        </select>
+                                        <input type="text" id="reason_${custIndex}_${ordIndex}" placeholder="اكتب سبب الرفض أو المرتجع..." style="display: ${ord.status === 'تم رفض الطلب أو عدم التسليم' ? 'block' : 'none'}; margin-top: 5px; width: 100%;" value="${ord.reason || ''}">
+                                        <button class="action-btn" onclick="updateBranchOrderStatus(${custIndex}, ${ordIndex})" style="margin-top: 5px;">حفظ وتحديث</button>
+                                    </td>
+                                </tr>
+                            `;
+                        }
+                    });
+                }
+            });
+
+            if (!hasOrders) {
+                tbody.innerHTML = `<tr><td colspan="6">لا توجد طلبات محولة لفرعك حتى الآن</td></tr>`;
+            }
+
+            loadDeliveryAccounting(currentBranchName, customers, deliveryList);
+        }
+
+        function checkBranchReason(custIndex, ordIndex) {
+            let status = document.getElementById(`status_${custIndex}_${ordIndex}`).value;
+            let reasonInput = document.getElementById(`reason_${custIndex}_${ordIndex}`);
+            if (status === 'تم رفض الطلب أو عدم التسليم') {
+                reasonInput.style.display = 'block';
+            } else {
+                reasonInput.style.display = 'none';
+                reasonInput.value = '';
+            }
+        }
+
+        function assignDelivery(custIndex, ordIndex) {
+            let selectedDelivery = document.getElementById(`del_${custIndex}_${ordIndex}`).value.trim();
+            let customers = JSON.parse(localStorage.getItem('adminCustomersList')) || [];
+            
+            if (customers[custIndex] && customers[custIndex].orders[ordIndex]) {
+                customers[custIndex].orders[ordIndex].assignedDelivery = selectedDelivery;
+                localStorage.setItem('adminCustomersList', JSON.stringify(customers));
+                
+                let currentBranchName = (localStorage.getItem('loggedBranchName') || '').trim();
+                let deliveryList = JSON.parse(localStorage.getItem('deliveryList')) || [];
+                loadDeliveryAccounting(currentBranchName, customers, deliveryList);
+            }
+        }
+
+        function updateBranchOrderStatus(custIndex, ordIndex) {
+            let newStatus = document.getElementById(`status_${custIndex}_${ordIndex}`).value;
+            let reason = document.getElementById(`reason_${custIndex}_${ordIndex}`).value;
+            let selectedDelivery = document.getElementById(`del_${custIndex}_${ordIndex}`).value.trim();
+
+            let customers = JSON.parse(localStorage.getItem('adminCustomersList')) || [];
+            if (customers[custIndex] && customers[custIndex].orders[ordIndex]) {
+                customers[custIndex].orders[ordIndex].status = newStatus;
+                customers[custIndex].orders[ordIndex].assignedDelivery = selectedDelivery;
+                customers[custIndex].orders[ordIndex].reason = (newStatus === 'تم رفض الطلب أو عدم التسليم') ? reason : '';
+                
+                localStorage.setItem('adminCustomersList', JSON.stringify(customers));
+                alert('تم تحديث حالة الشحنة وإسناد المندوب بنجاح');
+                loadBranchDashboard();
+            }
+        }
+
+        function loadDeliveryAccounting(branchName, customers, deliveryList) {
+            let accountingBody = document.getElementById('deliveryAccountingBody');
+            accountingBody.innerHTML = '';
+
+            let activeDeliveriesCount = 0;
+
+            deliveryList.forEach(del => {
+                let delName = (del.name || '').trim();
+                let totalCashCollected = 0;
+                let assignedCount = 0;
+
+                customers.forEach(cust => {
+                    if (cust.orders) {
+                        cust.orders.forEach(ord => {
+                            let assignedDel = (ord.assignedDelivery || '').trim();
+                            let ordBranch = (ord.assignedBranch || '').trim();
+
+                            if (ordBranch === branchName && assignedDel === delName && !ord.isSettled) {
+                                assignedCount++;
+                                let numericPrice = parseFloat((ord.price || '0').replace(/[^0-9.]/g, '')) || 0;
+                                totalCashCollected += numericPrice;
+                            }
+                        });
+                    }
+                });
+
+                if (assignedCount > 0) {
+                    activeDeliveriesCount++;
+                    accountingBody.innerHTML += `
+                        <tr>
+                            <td><b>${delName}</b></td>
+                            <td dir="ltr">${del.phone || '---'}</td>
+                            <td><b style="color: #c0392b; font-size: 16px;">$${totalCashCollected.toFixed(2)}</b> (${assignedCount} طلب)</td>
+                            <td>
+                                <button class="report-btn" onclick="openDeliveryModal('${delName}')">إدارة الطلبات والتقرير</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+
+            if (activeDeliveriesCount === 0) {
+                accountingBody.innerHTML = `<tr><td colspan="4" style="color: #666; padding: 15px;">لا توجد طلبات مسندة لأي مندوب حالياً (جميع المناديب أصفار).</td></tr>`;
+            }
+        }
+
+        function openDeliveryModal(deliveryName) {
+            let customers = JSON.parse(localStorage.getItem('adminCustomersList')) || [];
+            let currentBranchName = (localStorage.getItem('loggedBranchName') || '').trim();
+            let modalTitle = document.getElementById('modalDeliveryTitle');
+            let modalBody = document.getElementById('modalDeliveryBody');
+
+            modalTitle.innerText = `تفاصيل حساب وطلبات المندوب النشط: ${deliveryName}`;
+            
+            let totalCash = 0;
+            let ordersHtml = `
+                <table style="width:100%; margin-top:10px;">
+                    <thead>
+                        <tr style="background:#f2f2f2;">
+                            <th>رقم الشحنة</th>
+                            <th>اسم العميل</th>
+                            <th>الهاتف</th>
+                            <th>المبلغ</th>
+                            <th>حالة الطلب</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            customers.forEach(cust => {
+                if (cust.orders) {
+                    cust.orders.forEach(ord => {
+                        let assignedDel = (ord.assignedDelivery || '').trim();
+                        let ordBranch = (ord.assignedBranch || '').trim();
+
+                        if (ordBranch === currentBranchName && assignedDel === deliveryName && !ord.isSettled) {
+                            let numericPrice = parseFloat((ord.price || '0').replace(/[^0-9.]/g, '')) || 0;
+                            totalCash += numericPrice;
+                            ordersHtml += `
+                                <tr>
+                                    <td><b>${ord.id}</b></td>
+                                    <td>${cust.name}</td>
+                                    <td dir="ltr">${cust.phone}</td>
+                                    <td><b>${ord.price || '$0.00'}</b></td>
+                                    <td><span style="background:#fff3cd; padding:3px 6px; border-radius:4px;">${ord.status}</span></td>
+                                </tr>
+                            `;
+                        }
+                    });
+                }
+            });
+
+            ordersHtml += `</tbody></table>`;
+
+            modalBody.innerHTML = `
+                ${ordersHtml}
+                <div style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 16px;">إجمالي الذمة المالية: <b style="color: #c0392b; font-size: 18px;">$${totalCash.toFixed(2)}</b></span>
+                    </div>
+                    <div>
+                        <button class="action-btn" onclick="settleDeliveryAccount('${deliveryName}')">تصفية واستلام النقدية (ذمة صفر)</button>
+                        <button class="report-btn" onclick="printDeliveryReport('${deliveryName}', ${totalCash})">طباعة التقرير</button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('deliveryModal').style.display = 'block';
+        }
+
+        function closeDeliveryModal() {
+            document.getElementById('deliveryModal').style.display = 'none';
+        }
+
+        // فتح سجل التصفيات السابقة وعرض زر تفاصيل وطباعة لكل تصفية
+        function openSettlementHistoryModal() {
+            let currentBranchName = (localStorage.getItem('loggedBranchName') || '').trim();
+            let settlementReports = JSON.parse(localStorage.getItem('branchSettlementReports')) || [];
+            let historyBody = document.getElementById('historyModalBody');
+            
+            let branchReports = settlementReports.filter(rep => (rep.branch || '').trim() === currentBranchName);
+
+            if (branchReports.length === 0) {
+                historyBody.innerHTML = `<p style="text-align:center; color:#666; padding:20px;">لا توجد سجلات تصفية سابقة محفوظة لهذا الفرع حتى الآن.</p>`;
+            } else {
+                let html = `<table style="width:100%; margin-top:10px;">
+                    <thead>
+                        <tr style="background:#f2f2f2;">
+                            <th>تاريخ ووقت التصفية</th>
+                            <th>اسم المندوب</th>
+                            <th>عدد الطلبات</th>
+                            <th>المبلغ المُصَفّى</th>
+                            <th>إجراءات التدقيق والطباعة</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+                [...branchReports].reverse().forEach((rep, index) => {
+                    // حساب المؤشر الحقيقي في المصفوفة الأصلية للعرض الصحيح
+                    let originalIndex = settlementReports.length - 1 - index;
+                    html += `
+                        <tr>
+                            <td><small>${rep.date || '---'}</small></td>
+                            <td><b>${rep.deliveryName || '---'}</b></td>
+                            <td>${rep.ordersCount || 0} طلب</td>
+                            <td><b style="color: #27ae60;">$${(rep.amount || 0).toFixed(2)}</b></td>
+                            <td>
+                                <button class="report-btn" onclick="openHistoryDetail(${originalIndex})">📂 فتح وطباعة تقرير المندوب</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `</tbody></table>`;
+                historyBody.innerHTML = html;
+            }
+
+            document.getElementById('historyModal').style.display = 'block';
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').style.display = 'none';
+        }
+
+        // عرض تفاصيل التصفية المحددة في نافذة منبثقة مع زر طباعة منفصل
+        function openHistoryDetail(reportIndex) {
+            let settlementReports = JSON.parse(localStorage.getItem('branchSettlementReports')) || [];
+            let rep = settlementReports[reportIndex];
+            if (!rep) return;
+
+            document.getElementById('historyDetailTitle').innerText = `تقرير تصفية المندوب: ${rep.deliveryName} (${rep.date})`;
+
+            let ordersRows = '';
+            (rep.orders || []).forEach(o => {
+                ordersRows += `
+                    <tr>
+                        <td><b>${o.id}</b></td>
+                        <td>${o.customer || '---'}</td>
+                        <td><b>${o.price || '$0.00'}</b></td>
+                        <td><span style="background:#e8f8f5; color:#16a085; padding:3px 6px; border-radius:4px;">${o.status || 'مُصَفّى'}</span></td>
+                    </tr>
+                `;
+            });
+
+            let detailBody = document.getElementById('historyDetailBody');
+            detailBody.innerHTML = `
+                <div id="printableReportContent">
+                    <h4 style="text-align: center; color: #2c3e50; margin-bottom: 5px;">تقرير عهدة وطلبات المندوب (مُصَفّى سابقاً)</h4>
+                    <p style="text-align: center; font-size: 13px; color: #666;">تاريخ التصفية: ${rep.date} | اسم المندوب: ${rep.deliveryName}</p>
+                    <table style="width:100%; margin-top:15px;">
+                        <thead>
+                            <tr style="background:#f2f2f2;">
+                                <th>رقم الشحنة</th>
+                                <th>اسم العميل</th>
+                                <th>المبلغ</th>
+                                <th>الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${ordersRows}
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 5px; text-align: left;">
+                        <span style="font-size: 16px;">إجمالي المبلغ المُصَفّى: <b style="color: #27ae60; font-size: 18px;">$${(rep.amount || 0).toFixed(2)}</b> (${rep.ordersCount} طلب)</span>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; text-align: center;">
+                    <button class="report-btn" onclick="printSpecificHistoryReport('${rep.deliveryName}', '${rep.date}')" style="padding: 10px 25px; font-size: 15px;">🖨️ طباعة هذا التقرير</button>
+                </div>
+            `;
+
+            document.getElementById('historyDetailModal').style.display = 'block';
+        }
+
+        function closeHistoryDetailModal() {
+            document.getElementById('historyDetailModal').style.display = 'none';
+        }
+
+        function printSpecificHistoryReport(deliveryName, reportDate) {
+            let currentBranchName = localStorage.getItem('loggedBranchName') || '';
+            let contentHtml = document.getElementById('printableReportContent').innerHTML;
+            let printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html lang="ar" dir="rtl">
+                <head>
+                    <title>طباعة تقرير تصفية - ${deliveryName}</title>
+                    <style>
+                        body { font-family: Tahoma, sans-serif; padding: 20px; }
+                        h2, h4 { text-align: center; color: #2c3e50; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        table, th, td { border: 1px solid #333; padding: 8px; text-align: center; }
+                        th { background: #eee; }
+                        .footer { margin-top: 50px; display: flex; justify-content: space-between; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <h2>شركة النقل - فرع ${currentBranchName}</h2>
+                    ${contentHtml}
+                    <div class="footer">
+                        <p>توقيع أمين الصندوق / الفرع: ........................</p>
+                        <p>توقيع المندوب: ........................</p>
+                    </div>
+                    <script>window.print();<\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        function settleDeliveryAccount(deliveryName) {
+            if (confirm(`هل أنت متأكد من تصفية العهدة المالية للمندوب (${deliveryName}) وتصفير حسابه؟`)) {
+                let customers = JSON.parse(localStorage.getItem('adminCustomersList')) || [];
+                let currentBranchName = (localStorage.getItem('loggedBranchName') || '').trim();
+                let settledAmount = 0;
+                let settledOrdersCount = 0;
+                let settledOrdersList = [];
+
+                customers.forEach(cust => {
+                    if (cust.orders) {
+                        cust.orders.forEach(ord => {
+                            let assignedDel = (ord.assignedDelivery || '').trim();
+                            let ordBranch = (ord.assignedBranch || '').trim();
+
+                            if (ordBranch === currentBranchName && assignedDel === deliveryName && !ord.isSettled) {
+                                ord.isSettled = true;
+                                let numericPrice = parseFloat((ord.price || '0').replace(/[^0-9.]/g, '')) || 0;
+                                settledAmount += numericPrice;
+                                settledOrdersCount++;
+                                settledOrdersList.push({ id: ord.id, customer: cust.name, price: ord.price, status: ord.status });
+                            }
+                        });
+                    }
+                });
+
+                localStorage.setItem('adminCustomersList', JSON.stringify(customers));
+
+                let settlementReports = JSON.parse(localStorage.getItem('branchSettlementReports')) || [];
+                settlementReports.push({
+                    branch: currentBranchName,
+                    deliveryName: deliveryName,
+                    amount: settledAmount,
+                    ordersCount: settledOrdersCount,
+                    orders: settledOrdersList,
+                    date: new Date().toLocaleString()
+                });
+                localStorage.setItem('branchSettlementReports', JSON.stringify(settlementReports));
+
+                alert(`تمت تصفية حساب المندوب ${deliveryName} بنجاح بقيمة $${settledAmount.toFixed(2)} وأصبح رصيد الذمة $0.00.`);
+                closeDeliveryModal();
+                loadBranchDashboard();
+            }
+        }
+
+        function printDeliveryReport(deliveryName, totalCash) {
+            let currentBranchName = localStorage.getItem('loggedBranchName') || '';
+            let printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html lang="ar" dir="rtl">
+                <head>
+                    <title>تقرير تصفية حساب مندوب - ${deliveryName}</title>
+                    <style>
+                        body { font-family: Tahoma, sans-serif; padding: 20px; }
+                        h2, h4 { text-align: center; color: #2c3e50; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        table, th, td { border: 1px solid #333; padding: 8px; text-align: center; }
+                        th { background: #eee; }
+                        .footer { margin-top: 40px; display: flex; justify-content: space-between; }
+                    </style>
+                </head>
+                <body>
+                    <h2>شركة النقل - فرع ${currentBranchName}</h2>
+                    <h4>تقرير عهدة وطلبات المندوب: ${deliveryName}</h4>
+                    <p><b>تاريخ الطباعة:</b> ${new Date().toLocaleString()}</p>
+                    <hr>
+                    ${document.getElementById('modalDeliveryBody').innerHTML}
+                    <div class="footer">
+                        <p>توقيع أمين الصندوق / الفرع: ........................</p>
+                        <p>توقيع المندوب المسلم: ........................</p>
+                    </div>
+                    <script>window.print();<\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        window.onclick = function(event) {
+            let deliveryModal = document.getElementById('deliveryModal');
+            let historyModal = document.getElementById('historyModal');
+            let historyDetailModal = document.getElementById('historyDetailModal');
+            if (event.target == deliveryModal) deliveryModal.style.display = "none";
+            if (event.target == historyModal) historyModal.style.display = "none";
+            if (event.target == historyDetailModal) historyDetailModal.style.display = "none";
+        }
+
+        window.onload = function() {
+            loadBranchDashboard();
+        }
+    </script>
+</body>
+</html>
