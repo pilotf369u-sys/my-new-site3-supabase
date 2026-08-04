@@ -93,6 +93,7 @@ export function saveLegacySession(profile) {
     country: profile.country || 'العراق',
     address: profile.address || '',
     role: profile.role || 'customer',
+    customer_id: profile.customer_id || null,
   }));
 }
 
@@ -113,7 +114,21 @@ export function getDashboardPath(profile) {
     return 'admin-dashboard.html';
   }
 
-  return 'dashboard.html';
+  if (role === 'customer' || role === 'client' || role === 'user') {
+    return 'index.html';
+  }
+
+  if (role === 'employee' || role === 'staff') {
+    const customerId = profile?.customer_id;
+
+    if (customerId !== null && customerId !== undefined && String(customerId).trim() !== '') {
+      return `employee-dashboard.html?customer_id=${encodeURIComponent(String(customerId).trim())}`;
+    }
+
+    return 'employee-dashboard.html';
+  }
+
+  return 'index.html';
 }
 
 export async function signOut() {
