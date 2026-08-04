@@ -92,6 +92,14 @@
     }
     .status.error { color: #b00020; }
     .status.success { color: #16713a; }
+    .form-error {
+      min-height: 22px;
+      margin-top: 8px;
+      color: #b00020;
+      font-size: 14px;
+      text-align: right;
+      line-height: 1.5;
+    }
     .hint {
       font-size: 13px;
       color: #777;
@@ -110,7 +118,7 @@
     </div>
 
     <section id="emailPanel" class="panel active" role="tabpanel">
-      <form id="emailForm">
+      <form id="emailForm" novalidate>
         <label for="email">البريد الإلكتروني</label>
         <input type="email" id="email" autocomplete="email" placeholder="name@example.com" required>
 
@@ -118,6 +126,7 @@
         <input type="password" id="password" autocomplete="current-password" placeholder="أدخل كلمة المرور" required>
 
         <button type="submit" id="emailLoginBtn">تسجيل الدخول بالبريد</button>
+        <div id="emailError" class="form-error" aria-live="polite"></div>
       </form>
     </section>
 
@@ -156,6 +165,7 @@
       sendPhoneOtp,
       verifyPhoneOtp,
       syncLegacySession,
+      getDashboardPath,
     } from './js/auth-service.js';
 
     let pendingPhone = '';
@@ -166,6 +176,7 @@
     const phonePanel = document.getElementById('phonePanel');
     const emailForm = document.getElementById('emailForm');
     const emailLoginBtn = document.getElementById('emailLoginBtn');
+    const emailError = document.getElementById('emailError');
     const sendBtn = document.getElementById('sendBtn');
     const verifyBtn = document.getElementById('verifyBtn');
     const status = document.getElementById('status');
@@ -173,6 +184,10 @@
     function setStatus(message = '', type = '') {
       status.textContent = message;
       status.className = `status ${type}`.trim();
+    }
+
+    function setEmailError(message = '') {
+      emailError.textContent = message;
     }
 
     function setTab(mode) {
@@ -185,6 +200,25 @@
       emailTab.setAttribute('aria-selected', String(emailActive));
       phoneTab.setAttribute('aria-selected', String(!emailActive));
       setStatus('');
+      setEmailError('');
+    }
+
+    function translateAuthError(message = '') {
+      const normalized = String(message).toLowerCase();
+
+      if (normalized.includes('invalid login credentials')) {
+        return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+      }
+
+      if (normalized.includes('email not confirmed')) {
+        return 'يجب تأكيد البريد الإلكتروني قبل تسجيل الدخول.';
+      }
+
+      if (normalized.includes('too many requests')) {
+        return 'تم إرسال محاولات كثيرة. حاول مرة أخرى بعد قليل.';
+      }
+
+      return message || 'تعذر تسجيل الدخول. تحقق من البيانات وحاول مجدداً.';
     }
 
     emailTab.addEventListener('click', () => setTab('email'));
@@ -192,27 +226,31 @@
 
     emailForm.addEventListener('submit', async (event) => {
       event.preventDefault();
+      event.stopPropagation();
+      setEmailError('');
+      setStatus('');
 
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
 
       if (!email || !password) {
-        setStatus('أدخل البريد الإلكتروني وكلمة المرور.', 'error');
+        setEmailError('أدخل البريد الإلكتروني وكلمة المرور.');
         return;
       }
 
       emailLoginBtn.disabled = true;
-      setStatus('جاري تسجيل الدخول...');
+      emailLoginBtn.textContent = 'جاري تسجيل الدخول...';
 
       try {
         await signInWithEmail(email, password);
-        await syncLegacySession();
-        setStatus('تم تسجيل الدخول بنجاح.', 'success');
-        window.location.href = 'dashboard.html';
+        const profile = await syncLegacySession();
+        const destination = getDashboardPath(profile);
+        window.location.replace(destination);
       } catch (error) {
-        setStatus(error.message || 'تعذر تسجيل الدخول.', 'error');
+        setEmailError(translateAuthError(error?.message));
       } finally {
         emailLoginBtn.disabled = false;
+        emailLoginBtn.textContent = 'تسجيل الدخول بالبريد';
       }
     });
 
@@ -257,9 +295,9 @@
 
       try {
         await verifyPhoneOtp(pendingPhone, token);
-        await syncLegacySession();
-        setStatus('تم تسجيل الدخول بنجاح.', 'success');
-        window.location.href = 'dashboard.html';
+        const profile = await syncLegacySession();
+        const destination = getDashboardPath(profile);
+        window.location.replace(destination);
       } catch (error) {
         setStatus(error.message || 'رمز التحقق غير صحيح.', 'error');
       } finally {
