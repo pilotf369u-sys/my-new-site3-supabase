@@ -1,1 +1,0 @@
-Temporary image compatibility files are being finalized.
