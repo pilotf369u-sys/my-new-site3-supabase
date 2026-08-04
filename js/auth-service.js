@@ -28,27 +28,58 @@ export async function sendPhoneOtp({ phone, fullName = '', country = 'العرا
     phone,
     options: { shouldCreateUser: true, data: { full_name: fullName, country, address, email } }
   });
-  if (error) throw new Error(error.message || 'تعذر إرسال رمز التحقق.');
+
+  if (error) {
+    throw new Error(error.message || 'تعذر إرسال رمز التحقق.');
+  }
+
   return data;
 }
 
 export async function verifyPhoneOtp(phone, token) {
-  const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' });
-  if (error) throw new Error(error.message || 'رمز التحقق غير صحيح.');
+  const { data, error } = await supabase.auth.verifyOtp({
+    phone,
+    token,
+    type: 'sms',
+  });
+
+  if (error) {
+    throw new Error(error.message || 'رمز التحقق غير صحيح.');
+  }
+
   return data;
 }
 
 export async function getCurrentUser() {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error) throw new Error(error.message);
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
   return user;
 }
 
 export async function getCurrentProfile() {
   const user = await getCurrentUser();
-  if (!user) return null;
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-  if (error) throw new Error(error.message);
+
+  if (!user) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (error) {
+    throw new Error(`تعذر جلب بيانات الحساب: ${error.message}`);
+  }
+
   return data;
 }
 
@@ -60,18 +91,38 @@ export function saveLegacySession(profile) {
     phone: profile.phone || '',
     email: profile.email || '',
     country: profile.country || 'العراق',
-    address: profile.address || ''
+    address: profile.address || '',
+    role: profile.role || 'customer',
   }));
 }
 
 export async function syncLegacySession() {
   const profile = await getCurrentProfile();
-  if (profile) saveLegacySession(profile);
+
+  if (profile) {
+    saveLegacySession(profile);
+  }
+
   return profile;
 }
 
+export function getDashboardPath(profile) {
+  const role = String(profile?.role || 'customer').trim().toLowerCase();
+
+  if (role === 'admin' || role === 'administrator') {
+    return 'admin-dashboard.html';
+  }
+
+  return 'dashboard.html';
+}
+
 export async function signOut() {
-  await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
   localStorage.removeItem('loggedInUser');
   window.location.href = 'login.html';
 }
