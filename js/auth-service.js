@@ -4,6 +4,25 @@ export function normalizePhone(countryCode, phone) {
   return `${countryCode.replace(/[^\d+]/g, '')}${phone.replace(/\D/g, '').replace(/^0+/, '')}`;
 }
 
+export async function signInWithEmail(email, password) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+
+  if (!normalizedEmail || !password) {
+    throw new Error('أدخل البريد الإلكتروني وكلمة المرور.');
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: normalizedEmail,
+    password,
+  });
+
+  if (error) {
+    throw new Error(error.message || 'تعذر تسجيل الدخول بالبريد الإلكتروني.');
+  }
+
+  return data;
+}
+
 export async function sendPhoneOtp({ phone, fullName = '', country = 'العراق', address = '', email = '' }) {
   const { data, error } = await supabase.auth.signInWithOtp({
     phone,
