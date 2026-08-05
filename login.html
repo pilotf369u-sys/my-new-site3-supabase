@@ -1,8 +1,28 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>تسجيل الدخول - MeshWar</title>
+  <script>
+    (async function removeOldBrowserCaches() {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(registration => registration.unregister()));
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(key => caches.delete(key)));
+        }
+      } catch (error) {
+        console.error('[Cache cleanup]', error);
+      }
+    })();
+  </script>
   <style>*{box-sizing:border-box}body{font-family:Tahoma,sans-serif;background:#f4f6f9;padding:20px;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}.box{background:#fff;padding:30px;border-radius:15px;width:100%;max-width:430px;box-shadow:0 4px 14px rgba(0,0,0,.1)}h2{text-align:center;color:#2c3e50;margin-top:0;margin-bottom:24px}label{display:block;font-weight:bold;margin-top:12px;color:#333}input,select{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;font-size:15px}button{width:100%;padding:12px;background:#c00;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:bold;font-size:16px;margin-top:12px}button:disabled{opacity:.65;cursor:not-allowed}.form-error{min-height:22px;margin-top:10px;color:#b00020;font-size:14px;line-height:1.6;text-align:center}.hint{text-align:center;font-size:13px;color:#777;line-height:1.6;margin:14px 0 0}a{color:#2980b9;text-decoration:none}.country-wrap{display:none}.country-wrap.visible{display:block}</style>
 </head>
 <body><div class="box"><h2>تسجيل الدخول</h2><form id="loginForm" novalidate>
@@ -10,8 +30,9 @@
 <div id="countryWrap" class="country-wrap visible"><label for="countryCode">رمز الدولة</label><select id="countryCode"><option value="+964">العراق (+964)</option><option value="+90">تركيا (+90)</option><option value="+966">السعودية (+966)</option><option value="+971">الإمارات (+971)</option></select></div>
 <label for="password">كلمة المرور</label><input type="password" id="password" autocomplete="current-password" required><button type="submit" id="loginBtn">تسجيل الدخول</button><div id="loginError" class="form-error" aria-live="polite"></div></form><p class="hint">استخدم بيانات الدخول التي منحها لك مسؤول النظام.</p><p style="text-align:center"><a href="index.html">العودة للرئيسية</a></p></div>
 <script type="module">
-import { supabase } from './js/supabase-client.js?v=20260805-20';
-import { signInWithEmail, signInWithPhone, syncLegacySession, getDashboardPath } from './js/auth-service.js?v=20260805-20';
+import { supabase } from './js/supabase-client.js?v=20260805-21';
+import { signInWithEmail, signInWithPhone, syncLegacySession, getDashboardPath, removeLegacyServiceWorkers } from './js/auth-service.js?v=20260805-21';
+await removeLegacyServiceWorkers();
 const form=document.getElementById('loginForm'),identifierInput=document.getElementById('identifier'),passwordInput=document.getElementById('password'),countryWrap=document.getElementById('countryWrap'),countryCode=document.getElementById('countryCode'),errorBox=document.getElementById('loginError'),button=document.getElementById('loginBtn');
 const isEmail=value=>String(value).includes('@');
 function normalizePhone(code,value){const digits=String(value||'').replace(/\D/g,'').replace(/^0+/,'');const countryDigits=String(code||'').replace(/\D/g,'');return digits.startsWith(countryDigits)?`+${digits}`:`+${countryDigits}${digits}`;}
