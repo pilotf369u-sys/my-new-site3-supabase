@@ -1,293 +1,40 @@
-(function () {
-  'use strict';
+(function(){
+'use strict';
+const digits=v=>String(v||'').replace(/\D/g,'');
+const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+const afterReady=cb=>(window.cloudDbReady||Promise.resolve()).catch(console.error).finally(()=>setTimeout(cb,0));
 
-  function digits(value) {
-    return String(value || '').replace(/\D/g, '');
-  }
+function mapOrders(rows){return(rows||[]).map(o=>({...o.payload,cloudId:o.id,id:o.legacy_id||o.payload?.id||o.id,status:o.status||o.payload?.status||'قيد المعالجة',date:o.payload?.date||o.payload?.createdAt||o.created_at,createdAt:o.created_at}));}
+function style(status){const s=String(status||'');if(s.includes('تسليم')||s.includes('توصيل'))return['#d4edda','#155724'];if(s.includes('ملغي')||s.includes('رفض'))return['#f8d7da','#721c24'];if(s.includes('شحن')||s.includes('توزيع')||s.includes('مخزن'))return['#cce5ff','#004085'];return['#e0f2fe','#0369a1'];}
+function render(customer,orders,isAdmin){
+ window.cloudSelectedCustomer={...customer,...(customer.payload||{}),orders};window.cloudSelectedCustomerOrders=orders;
+ const n=document.getElementById('userName');if(n)n.textContent=customer.name||'عزيزي العميل';
+ const a=document.getElementById('userAddress');if(a)a.value=customer.address||'';
+ const b=document.getElementById('backBtn');if(b){b.textContent=isAdmin?'العودة إلى لوحة الأدمن':'العودة للرئيسية';b.href=isAdmin?'admin-dashboard.html':'index.html';b.onclick=null;}
+ const body=document.getElementById('customerOrdersTableBody');if(!body)return;
+ if(!orders.length){body.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:#777">لا توجد طلبات لهذا العميل.</td></tr>';return;}
+ let total=0;body.innerHTML=orders.map((o,i)=>{const p=String(o.price||(o.numericPrice!=null?`${o.currency||'$'}${o.numericPrice}`:'$0.00'));total+=parseFloat(p.replace(/[^0-9.]/g,''))||0;const [bg,c]=style(o.status);return `<tr><td><b>${esc(o.id)}</b></td><td>${esc(o.date||'غير محدد')}</td><td><span style="padding:5px 10px;background:${bg};color:${c};border-radius:4px">${esc(o.status)}</span></td><td><b>${esc(p)}</b></td><td><button class="btn-details" onclick="openCloudCustomerOrderDetails(${i})">عرض التفاصيل</button></td><td>—</td><td>—</td></tr>`}).join('');
+ body.insertAdjacentHTML('beforeend',`<tr style="font-weight:bold"><td colspan="3">الإجمالي:</td><td colspan="4">$${total.toFixed(2)}</td></tr>`);
+}
 
-  function escapeHtml(value) {
-    return String(value ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
-  }
+async function loadCustomerPortal(){
+ const token=localStorage.getItem('customerPortalToken');if(!token||!window.cloudDb?.client)return false;
+ const {data,error}=await window.cloudDb.client.rpc('customer_portal_data',{p_token:token});
+ if(error){console.error('[Customer Portal] Load failed:',error);return false;}
+ if(!data?.ok){console.error('[Customer Portal]',data?.message);localStorage.removeItem('customerPortalToken');return false;}
+ render(data.customer,mapOrders(data.orders),false);console.info('[Customer Portal] Loaded',data.customer?.phone);return true;
+}
 
-  function afterCloudReady(callback) {
-    const ready = window.cloudDbReady || Promise.resolve();
-    ready
-      .catch(error => {
-        console.error('[Customer View] Cloud initialization failed:', error);
-      })
-      .finally(() => {
-        // The legacy inline scripts also run from cloudDbReady. A macrotask
-        // guarantees this fix is installed after those scripts finish.
-        setTimeout(callback, 0);
-      });
-  }
+async function loadAdminView(){
+ const p=new URLSearchParams(location.search);const phone=digits(p.get('phone')||sessionStorage.getItem('selectedCustomerPhone'));if(!phone||!window.cloudDb?.client)return;
+ const c=await window.cloudDb.client.from('customers').select('*');if(c.error){console.error('[Customer View] customers:',c.error);return;}
+ const customer=(c.data||[]).find(x=>digits(x.phone)===phone);if(!customer)return;
+ const o=await window.cloudDb.client.from('orders').select('*').or(`customer_id.eq.${customer.id},customer_phone.eq.${customer.phone}`).order('created_at',{ascending:false});if(o.error)console.error('[Customer View] orders:',o.error);
+ render(customer,mapOrders(o.data),true);
+}
 
-  function installAdminCustomerSelector() {
-    window.loginAsCustomer = function loginAsCustomer(index) {
-      let customers = [];
+function installAdminSelector(){window.loginAsCustomer=function(index){let list=[];try{list=JSON.parse(localStorage.getItem('adminCustomersList')||'[]')}catch{}const c=list[index];if(!c)return alert('العميل غير موجود');const phone=digits(c.phone);sessionStorage.setItem('selectedCustomerPhone',phone);sessionStorage.setItem('openedByAdmin','true');localStorage.setItem('viewedBy','admin');location.assign(`dashboard.html?phone=${encodeURIComponent(phone)}&view=admin`)};}
+window.openCloudCustomerOrderDetails=function(i){const o=window.cloudSelectedCustomerOrders?.[i];if(!o)return;const m=document.getElementById('customerOrderDetailsModal'),c=document.getElementById('customerOrderDetailsContent');if(!m||!c)return;c.innerHTML=`<p><strong>رقم الطلب:</strong> ${esc(o.id)}</p><p><strong>التاريخ:</strong> ${esc(o.date||'غير محدد')}</p><p><strong>السعر:</strong> ${esc(o.price||o.numericPrice||'$0.00')}</p><p><strong>الحالة:</strong> ${esc(o.status)}</p><p><strong>ملاحظات:</strong> ${esc(o.notes||'لا توجد')}</p>`;m.style.display='flex'};
 
-      try {
-        customers = JSON.parse(
-          localStorage.getItem('adminCustomersList') || '[]',
-        );
-      } catch (error) {
-        console.error('[Customer View] Failed to parse customers:', error);
-      }
-
-      const customer = customers[index];
-      if (!customer) {
-        alert('العميل غير موجود');
-        return;
-      }
-
-      const phone = digits(customer.phone);
-      if (!phone) {
-        alert('رقم هاتف العميل غير موجود');
-        return;
-      }
-
-      sessionStorage.setItem('selectedCustomerPhone', phone);
-      sessionStorage.setItem('selectedCustomerName', customer.name || '');
-      sessionStorage.setItem('openedByAdmin', 'true');
-
-      localStorage.setItem('isAdminViewing', 'true');
-      localStorage.setItem('viewedBy', 'admin');
-      localStorage.setItem('viewingCustomerIndex', String(index));
-
-      window.location.assign(
-        `dashboard.html?phone=${encodeURIComponent(phone)}&view=admin`,
-      );
-    };
-
-    console.info('[Customer View] Admin selector installed after legacy code.');
-  }
-
-  function formatDate(value) {
-    if (!value) return 'غير محدد';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime())
-      ? String(value)
-      : date.toLocaleString('ar');
-  }
-
-  function statusStyle(status) {
-    const text = String(status || 'قيد المعالجة');
-
-    if (text.includes('تسليم') || text.includes('توصيل')) {
-      return ['#d4edda', '#155724'];
-    }
-
-    if (text.includes('ملغي') || text.includes('رفض')) {
-      return ['#f8d7da', '#721c24'];
-    }
-
-    if (
-      text.includes('شحن') ||
-      text.includes('توزيع') ||
-      text.includes('مخزن')
-    ) {
-      return ['#cce5ff', '#004085'];
-    }
-
-    return ['#e0f2fe', '#0369a1'];
-  }
-
-  async function loadAdminSelectedCustomer() {
-    const params = new URLSearchParams(window.location.search);
-    const requestedPhone = digits(
-      params.get('phone') || sessionStorage.getItem('selectedCustomerPhone'),
-    );
-    const isAdminView =
-      params.get('view') === 'admin' ||
-      sessionStorage.getItem('openedByAdmin') === 'true' ||
-      localStorage.getItem('viewedBy') === 'admin';
-
-    if (!requestedPhone || !window.cloudDb?.client) {
-      return;
-    }
-
-    const client = window.cloudDb.client;
-
-    const { data: customers, error: customerError } = await client
-      .from('customers')
-      .select('*');
-
-    if (customerError) {
-      console.error(
-        '[Customer View] Failed to load selected customer:',
-        customerError,
-      );
-      return;
-    }
-
-    const customer = (customers || []).find(
-      item => digits(item.phone) === requestedPhone,
-    );
-
-    if (!customer) {
-      console.error(
-        '[Customer View] Customer was not found for phone:',
-        requestedPhone,
-      );
-      const body = document.getElementById('customerOrdersTableBody');
-      if (body) {
-        body.innerHTML =
-          '<tr><td colspan="7" style="padding:20px;color:#b00020">تعذر العثور على بيانات العميل المحدد.</td></tr>';
-      }
-      return;
-    }
-
-    const { data: orders, error: ordersError } = await client
-      .from('orders')
-      .select('*')
-      .or(
-        `customer_id.eq.${customer.id},customer_phone.eq.${customer.phone}`,
-      )
-      .order('created_at', { ascending: false });
-
-    if (ordersError) {
-      console.error(
-        '[Customer View] Failed to load customer orders:',
-        ordersError,
-      );
-    }
-
-    const mappedOrders = (orders || []).map(order => ({
-      ...(order.payload || {}),
-      cloudId: order.id,
-      id:
-        order.legacy_id ||
-        order.payload?.id ||
-        order.id,
-      status: order.status || order.payload?.status || 'قيد المعالجة',
-      createdAt: order.created_at,
-      date:
-        order.payload?.date ||
-        order.payload?.createdAt ||
-        order.created_at,
-    }));
-
-    window.cloudSelectedCustomer = {
-      ...customer,
-      ...(customer.payload || {}),
-      orders: mappedOrders,
-    };
-    window.cloudSelectedCustomerOrders = mappedOrders;
-
-    const userName = document.getElementById('userName');
-    if (userName) {
-      userName.textContent = customer.name || 'عزيزي العميل';
-    }
-
-    const address = document.getElementById('userAddress');
-    if (address) {
-      address.value = customer.address || '';
-    }
-
-    const backButton = document.getElementById('backBtn');
-    if (backButton && isAdminView) {
-      backButton.textContent = 'العودة إلى لوحة الأدمن';
-      backButton.href = 'admin-dashboard.html';
-      backButton.onclick = null;
-    }
-
-    const tableBody = document.getElementById('customerOrdersTableBody');
-    if (!tableBody) return;
-
-    if (!mappedOrders.length) {
-      tableBody.innerHTML =
-        '<tr><td colspan="7" style="text-align:center;padding:20px;color:#777">لا توجد طلبات لهذا العميل.</td></tr>';
-      return;
-    }
-
-    let total = 0;
-    tableBody.innerHTML = mappedOrders
-      .map((order, index) => {
-        const priceText = String(
-          order.price ||
-            (order.numericPrice != null
-              ? `${order.currency || '$'}${order.numericPrice}`
-              : '$0.00'),
-        );
-        total += Number.parseFloat(priceText.replace(/[^0-9.]/g, '')) || 0;
-
-        const [background, color] = statusStyle(order.status);
-
-        return `
-          <tr>
-            <td><b>${escapeHtml(order.id)}</b></td>
-            <td style="font-size:13px;color:#555">${escapeHtml(
-              formatDate(order.date || order.createdAt),
-            )}</td>
-            <td><span style="padding:5px 10px;background:${background};color:${color};border-radius:4px;font-size:12px;font-weight:bold;display:inline-block">${escapeHtml(
-              order.status,
-            )}</span></td>
-            <td><b style="color:#003366">${escapeHtml(priceText)}</b></td>
-            <td><button class="btn-details" type="button" onclick="openCloudCustomerOrderDetails(${index})"><i class="fa-solid fa-eye"></i> عرض التفاصيل</button></td>
-            <td><span style="color:#64748b">—</span></td>
-            <td><span style="color:#64748b">—</span></td>
-          </tr>`;
-      })
-      .join('');
-
-    tableBody.insertAdjacentHTML(
-      'beforeend',
-      `<tr style="font-weight:bold;color:var(--primary-red)"><td colspan="3" style="text-align:left">الإجمالي المطلوب دفعه:</td><td colspan="4" style="text-align:center">$${total.toFixed(
-        2,
-      )}</td></tr>`,
-    );
-
-    console.info('[Customer View] Loaded selected customer:', {
-      customer: customer.phone,
-      orders: mappedOrders.length,
-    });
-  }
-
-  window.openCloudCustomerOrderDetails = function (index) {
-    const order = window.cloudSelectedCustomerOrders?.[index];
-    if (!order) return;
-
-    const modal = document.getElementById('customerOrderDetailsModal');
-    const content = document.getElementById('customerOrderDetailsContent');
-    if (!modal || !content) return;
-
-    const productUrl = order.productUrl || order.url || '';
-    content.innerHTML = `
-      <p><strong>رقم الطلب:</strong> ${escapeHtml(order.id)}</p>
-      <p><strong>تاريخ الطلب:</strong> ${escapeHtml(
-        formatDate(order.date || order.createdAt),
-      )}</p>
-      <p><strong>السعر:</strong> ${escapeHtml(
-        order.price || order.numericPrice || '$0.00',
-      )}</p>
-      <p><strong>الحالة:</strong> ${escapeHtml(order.status)}</p>
-      <p><strong>رابط المنتج:</strong> ${
-        productUrl
-          ? `<a href="${escapeHtml(
-              productUrl,
-            )}" target="_blank" rel="noopener">فتح الرابط</a>`
-          : 'غير مسجل'
-      }</p>
-      <p><strong>ملاحظات:</strong> ${escapeHtml(order.notes || 'لا توجد')}</p>`;
-    modal.style.display = 'flex';
-  };
-
-  const path = window.location.pathname;
-
-  if (path.endsWith('admin-dashboard.html')) {
-    afterCloudReady(installAdminCustomerSelector);
-  }
-
-  if (path.endsWith('dashboard.html')) {
-    afterCloudReady(() => {
-      loadAdminSelectedCustomer().catch(error => {
-        console.error('[Customer View] Unexpected dashboard error:', error);
-      });
-    });
-  }
+const path=location.pathname;if(path.endsWith('admin-dashboard.html'))afterReady(installAdminSelector);if(path.endsWith('dashboard.html'))afterReady(async()=>{const customerMode=new URLSearchParams(location.search).get('view')==='customer';if(customerMode&&await loadCustomerPortal())return;await loadAdminView();});
 })();
