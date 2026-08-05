@@ -1,45 +1,31 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
+  <meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
   <title>تسجيل الدخول - MeshWar</title>
   <script>
-    (async function removeOldBrowserCaches() {
-      try {
-        if ('serviceWorker' in navigator) {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(registrations.map(registration => registration.unregister()));
-        }
-        if ('caches' in window) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map(key => caches.delete(key)));
-        }
-      } catch (error) {
-        console.error('[Cache cleanup]', error);
-      }
-    })();
+    (async()=>{try{if('serviceWorker'in navigator){const r=await navigator.serviceWorker.getRegistrations();await Promise.all(r.map(x=>x.unregister()));}if('caches'in window){const k=await caches.keys();await Promise.all(k.map(x=>caches.delete(x)));}}catch(e){console.error(e)}})();
   </script>
-  <style>*{box-sizing:border-box}body{font-family:Tahoma,sans-serif;background:#f4f6f9;padding:20px;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}.box{background:#fff;padding:30px;border-radius:15px;width:100%;max-width:430px;box-shadow:0 4px 14px rgba(0,0,0,.1)}h2{text-align:center;color:#2c3e50;margin-top:0;margin-bottom:24px}label{display:block;font-weight:bold;margin-top:12px;color:#333}input,select{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;font-size:15px}button{width:100%;padding:12px;background:#c00;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:bold;font-size:16px;margin-top:12px}button:disabled{opacity:.65;cursor:not-allowed}.form-error{min-height:22px;margin-top:10px;color:#b00020;font-size:14px;line-height:1.6;text-align:center}.hint{text-align:center;font-size:13px;color:#777;line-height:1.6;margin:14px 0 0}a{color:#2980b9;text-decoration:none}.country-wrap{display:none}.country-wrap.visible{display:block}</style>
+  <style>*{box-sizing:border-box}body{font-family:Tahoma,sans-serif;background:#f4f6f9;padding:20px;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}.box{background:#fff;padding:30px;border-radius:15px;width:100%;max-width:430px;box-shadow:0 4px 14px rgba(0,0,0,.1)}h2{text-align:center;color:#2c3e50;margin-top:0;margin-bottom:24px}label{display:block;font-weight:bold;margin-top:12px;color:#333}input,select{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;font-size:15px}button{width:100%;padding:12px;background:#c00;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:bold;font-size:16px;margin-top:12px}button:disabled{opacity:.65}.form-error{min-height:22px;margin-top:10px;color:#b00020;font-size:14px;line-height:1.6;text-align:center}.hint{text-align:center;font-size:13px;color:#777;line-height:1.6;margin:14px 0 0}a{color:#2980b9;text-decoration:none}.country-wrap{display:none}.country-wrap.visible{display:block}</style>
 </head>
 <body><div class="box"><h2>تسجيل الدخول</h2><form id="loginForm" novalidate>
 <label for="identifier">البريد الإلكتروني أو رقم الهاتف</label><input type="text" id="identifier" autocomplete="username" placeholder="example@email.com أو 5378240430" required>
 <div id="countryWrap" class="country-wrap visible"><label for="countryCode">رمز الدولة</label><select id="countryCode"><option value="+964">العراق (+964)</option><option value="+90">تركيا (+90)</option><option value="+966">السعودية (+966)</option><option value="+971">الإمارات (+971)</option></select></div>
 <label for="password">كلمة المرور</label><input type="password" id="password" autocomplete="current-password" required><button type="submit" id="loginBtn">تسجيل الدخول</button><div id="loginError" class="form-error" aria-live="polite"></div></form><p class="hint">استخدم بيانات الدخول التي منحها لك مسؤول النظام.</p><p style="text-align:center"><a href="index.html">العودة للرئيسية</a></p></div>
 <script type="module">
-import { supabase } from './js/supabase-client.js?v=20260805-21';
-import { signInWithEmail, signInWithPhone, syncLegacySession, getDashboardPath, removeLegacyServiceWorkers } from './js/auth-service.js?v=20260805-21';
+import { supabase } from './js/supabase-client.js?v=20260805-22';
+import { signInWithEmail, signInWithPhone, syncLegacySession, getDashboardPath, removeLegacyServiceWorkers } from './js/auth-service.js?v=20260805-22';
 await removeLegacyServiceWorkers();
 const form=document.getElementById('loginForm'),identifierInput=document.getElementById('identifier'),passwordInput=document.getElementById('password'),countryWrap=document.getElementById('countryWrap'),countryCode=document.getElementById('countryCode'),errorBox=document.getElementById('loginError'),button=document.getElementById('loginBtn');
-const isEmail=value=>String(value).includes('@');
-function normalizePhone(code,value){const digits=String(value||'').replace(/\D/g,'').replace(/^0+/,'');const countryDigits=String(code||'').replace(/\D/g,'');return digits.startsWith(countryDigits)?`+${digits}`:`+${countryDigits}${digits}`;}
+const isEmail=v=>String(v).includes('@');
+const digits=v=>String(v||'').replace(/\D/g,'');
+function phoneVariants(code,value){const local=digits(value).replace(/^0+/,'');const cc=digits(code);const full=local.startsWith(cc)?local:cc+local;return [...new Set([full,`+${full}`,local,`+${local}`,full.replace(/^90(?=\d)/,''),full.replace(/^964(?=\d)/,'')].filter(Boolean))];}
 function updateIdentifierMode(){countryWrap.classList.toggle('visible',!isEmail(identifierInput.value.trim()));}
-function clearOldSessions(){localStorage.removeItem('customerPortalToken');localStorage.removeItem('loggedInUser');localStorage.removeItem('viewedBy');localStorage.removeItem('isAdminViewing');localStorage.removeItem('isEmployeeViewing');sessionStorage.removeItem('selectedCustomerPhone');sessionStorage.removeItem('openedByAdmin');}
+function clearOldSessions(){['customerPortalToken','loggedInUser','viewedBy','isAdminViewing','isEmployeeViewing'].forEach(k=>localStorage.removeItem(k));sessionStorage.removeItem('selectedCustomerPhone');sessionStorage.removeItem('openedByAdmin');}
 async function finishStaffLogin(){const profile=await syncLegacySession();if(!profile)throw new Error('تعذر العثور على صلاحية الحساب.');location.replace(getDashboardPath(profile));}
-async function tryCustomerLogin(phone,password){const{data,error}=await supabase.rpc('customer_password_login_v2',{p_phone:phone,p_password:password});if(error)throw new Error(error.message||'تعذر الاتصال بخدمة دخول العملاء.');if(!data?.ok)return false;clearOldSessions();localStorage.setItem('customerPortalToken',data.token);localStorage.setItem('loggedInUser',JSON.stringify(data.customer));location.replace('dashboard.html?view=customer');return true;}
+async function tryCustomerLogin(phones,password){let lastMessage='رقم الهاتف أو كلمة المرور غير صحيحة.';for(const phone of phones){const{data,error}=await supabase.rpc('customer_password_login_v2',{p_phone:phone,p_password:password});if(error){console.error('[Customer Login]',phone,error);throw new Error(error.message||'تعذر الاتصال بخدمة دخول العملاء.');}if(data?.message)lastMessage=data.message;if(data?.ok){clearOldSessions();localStorage.setItem('customerPortalToken',data.token);localStorage.setItem('loggedInUser',JSON.stringify(data.customer));location.replace('dashboard.html?view=customer');return true;}}throw new Error(lastMessage);}
 identifierInput.addEventListener('input',updateIdentifierMode);
-form.addEventListener('submit',async event=>{event.preventDefault();errorBox.textContent='';const identifier=identifierInput.value.trim(),password=passwordInput.value;if(!identifier||!password){errorBox.textContent='أدخل البريد الإلكتروني أو رقم الهاتف وكلمة المرور.';return;}button.disabled=true;button.textContent='جاري تسجيل الدخول...';try{if(isEmail(identifier)){clearOldSessions();await signInWithEmail(identifier,password);await finishStaffLogin();return;}const phone=normalizePhone(countryCode.value,identifier);if(await tryCustomerLogin(phone,password))return;try{clearOldSessions();await signInWithPhone(phone,password);await finishStaffLogin();}catch{throw new Error('رقم الهاتف أو كلمة المرور غير صحيحة.');}}catch(error){console.error(error);errorBox.textContent=error?.message||'تعذر تسجيل الدخول.';}finally{button.disabled=false;button.textContent='تسجيل الدخول';}});updateIdentifierMode();
+form.addEventListener('submit',async event=>{event.preventDefault();errorBox.textContent='';const identifier=identifierInput.value.trim(),password=passwordInput.value;if(!identifier||!password){errorBox.textContent='أدخل البريد الإلكتروني أو رقم الهاتف وكلمة المرور.';return;}button.disabled=true;button.textContent='جاري تسجيل الدخول...';try{if(isEmail(identifier)){clearOldSessions();await signInWithEmail(identifier,password);await finishStaffLogin();return;}const variants=phoneVariants(countryCode.value,identifier);try{await tryCustomerLogin(variants,password);return;}catch(customerError){console.warn('[Customer login failed]',customerError);try{clearOldSessions();await signInWithPhone(`+${variants[0]}`,password);await finishStaffLogin();return;}catch{throw customerError;}}}catch(error){console.error(error);errorBox.textContent=error?.message||'تعذر تسجيل الدخول.';}finally{button.disabled=false;button.textContent='تسجيل الدخول';}});updateIdentifierMode();
 </script></body></html>
