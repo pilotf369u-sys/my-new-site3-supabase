@@ -17,11 +17,14 @@
     label { display: block; font-weight: bold; margin-top: 10px; color: #333; }
     input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; }
     button { width: 100%; padding: 12px; background: #c00; color: #fff; border: 0; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 8px; }
+    button.secondary { background: #667085; }
     button:disabled { opacity: .65; cursor: not-allowed; }
     p { text-align: center; }
     a { color: #2980b9; text-decoration: none; }
     .form-error { min-height: 22px; margin-top: 8px; color: #b00020; font-size: 14px; text-align: right; line-height: 1.5; }
-    .hint { font-size: 13px; color: #777; margin: 4px 0 8px; text-align: right; }
+    .form-success { min-height: 22px; margin-top: 8px; color: #087443; font-size: 14px; text-align: right; line-height: 1.5; }
+    .hint { font-size: 13px; color: #667085; margin: 8px 0; text-align: right; line-height: 1.7; }
+    #otpStep { display: none; }
   </style>
 </head>
 <body>
@@ -34,7 +37,7 @@
     </div>
 
     <section id="phonePanel" class="panel active" role="tabpanel">
-      <form id="phoneForm" novalidate>
+      <div id="phoneStep">
         <label for="countryCode">رمز الدولة</label>
         <select id="countryCode">
           <option value="+964">العراق (+964)</option>
@@ -42,13 +45,24 @@
           <option value="+966">السعودية (+966)</option>
           <option value="+971">الإمارات (+971)</option>
         </select>
+
         <label for="phone">رقم الهاتف</label>
         <input type="tel" id="phone" placeholder="7701234567" inputmode="numeric" autocomplete="tel" required>
-        <label for="phonePassword">كلمة المرور</label>
-        <input type="password" id="phonePassword" autocomplete="current-password" placeholder="أدخل كلمة المرور" required>
-        <button type="submit" id="phoneLoginBtn">تسجيل الدخول برقم الهاتف</button>
-        <div id="phoneError" class="form-error" aria-live="polite"></div>
-      </form>
+
+        <button type="button" id="sendOtpBtn">إرسال رمز التحقق</button>
+        <p class="hint">للعملاء القدامى: أدخل نفس الرقم الموجود في حسابك. سيتم ربطه تلقائياً بطلباتك القديمة بعد التحقق.</p>
+      </div>
+
+      <div id="otpStep">
+        <p id="otpDestination" class="hint"></p>
+        <label for="phoneOtp">رمز التحقق</label>
+        <input type="text" id="phoneOtp" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="123456">
+        <button type="button" id="verifyOtpBtn">تأكيد الرمز والدخول</button>
+        <button type="button" id="changePhoneBtn" class="secondary">تغيير رقم الهاتف</button>
+      </div>
+
+      <div id="phoneSuccess" class="form-success" aria-live="polite"></div>
+      <div id="phoneError" class="form-error" aria-live="polite"></div>
     </section>
 
     <section id="emailPanel" class="panel" role="tabpanel">
@@ -62,23 +76,28 @@
       </form>
     </section>
 
-    <p class="hint">رمز التحقق يُستخدم فقط عند إنشاء حساب جديد لأول مرة.</p>
     <p><a href="register.html">ليس لديك حساب؟ سجل الآن</a></p>
   </div>
 
   <script type="module">
     import {
       normalizePhone,
-      signInWithPhone,
+      sendPhoneOtp,
+      verifyPhoneOtp,
       signInWithEmail,
       syncLegacySession,
       getDashboardPath,
-    } from './js/auth-service.js?v=20260805-2';
+    } from './js/auth-service.js?v=20260805-otp1';
 
     const phoneTab = document.getElementById('phoneTab');
     const emailTab = document.getElementById('emailTab');
     const phonePanel = document.getElementById('phonePanel');
     const emailPanel = document.getElementById('emailPanel');
+    const phoneStep = document.getElementById('phoneStep');
+    const otpStep = document.getElementById('otpStep');
+    const phoneError = document.getElementById('phoneError');
+    const phoneSuccess = document.getElementById('phoneSuccess');
+    let pendingPhone = '';
 
     function setTab(mode) {
       const phoneActive = mode === 'phone';
@@ -88,16 +107,19 @@
       emailPanel.classList.toggle('active', !phoneActive);
       phoneTab.setAttribute('aria-selected', String(phoneActive));
       emailTab.setAttribute('aria-selected', String(!phoneActive));
-      document.getElementById('phoneError').textContent = '';
+      phoneError.textContent = '';
+      phoneSuccess.textContent = '';
       document.getElementById('emailError').textContent = '';
     }
 
     function translateAuthError(message = '') {
       const value = String(message).toLowerCase();
-      if (value.includes('invalid login credentials')) return 'رقم الهاتف أو البريد أو كلمة المرور غير صحيحة.';
+      if (value.includes('phone logins are disabled')) return 'تسجيل الهاتف غير مفعّل في Supabase. فعّل Phone Provider وأضف مزود SMS.';
+      if (value.includes('invalid login credentials')) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
       if (value.includes('email not confirmed')) return 'يجب تأكيد البريد الإلكتروني قبل تسجيل الدخول.';
-      if (value.includes('too many requests')) return 'تم إرسال محاولات كثيرة. حاول مرة أخرى بعد قليل.';
-      return message || 'تعذر تسجيل الدخول. تحقق من البيانات وحاول مجدداً.';
+      if (value.includes('token has expired') || value.includes('invalid otp')) return 'رمز التحقق غير صحيح أو انتهت صلاحيته.';
+      if (value.includes('too many requests') || value.includes('rate limit')) return 'تم إرسال محاولات كثيرة. حاول مرة أخرى بعد قليل.';
+      return message || 'تعذر تسجيل الدخول. حاول مجدداً.';
     }
 
     async function finishLogin() {
@@ -111,41 +133,71 @@
     phoneTab.addEventListener('click', () => setTab('phone'));
     emailTab.addEventListener('click', () => setTab('email'));
 
-    document.getElementById('phoneForm').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const errorBox = document.getElementById('phoneError');
-      const button = document.getElementById('phoneLoginBtn');
-      errorBox.textContent = '';
-
+    document.getElementById('sendOtpBtn').addEventListener('click', async () => {
+      phoneError.textContent = '';
+      phoneSuccess.textContent = '';
+      const button = document.getElementById('sendOtpBtn');
       const rawPhone = document.getElementById('phone').value.trim();
-      const password = document.getElementById('phonePassword').value;
-      if (!rawPhone || !password) {
-        errorBox.textContent = 'أدخل رقم الهاتف وكلمة المرور.';
+      if (!rawPhone) {
+        phoneError.textContent = 'أدخل رقم الهاتف.';
         return;
       }
 
-      const phone = normalizePhone(document.getElementById('countryCode').value, rawPhone);
+      pendingPhone = normalizePhone(document.getElementById('countryCode').value, rawPhone);
       button.disabled = true;
-      button.textContent = 'جاري تسجيل الدخول...';
+      button.textContent = 'جاري إرسال الرمز...';
       try {
-        await signInWithPhone(phone, password);
-        await finishLogin();
+        await sendPhoneOtp({ phone: pendingPhone });
+        document.getElementById('otpDestination').textContent = `تم إرسال رمز التحقق إلى ${pendingPhone}`;
+        phoneStep.style.display = 'none';
+        otpStep.style.display = 'block';
+        phoneSuccess.textContent = 'أدخل الرمز المرسل إلى هاتفك.';
+        document.getElementById('phoneOtp').focus();
       } catch (error) {
-        errorBox.textContent = translateAuthError(error?.message);
+        phoneError.textContent = translateAuthError(error?.message);
       } finally {
         button.disabled = false;
-        button.textContent = 'تسجيل الدخول برقم الهاتف';
+        button.textContent = 'إرسال رمز التحقق';
       }
     });
 
-    document.getElementById('emailForm').addEventListener('submit', async (event) => {
+    document.getElementById('verifyOtpBtn').addEventListener('click', async () => {
+      phoneError.textContent = '';
+      phoneSuccess.textContent = '';
+      const button = document.getElementById('verifyOtpBtn');
+      const token = document.getElementById('phoneOtp').value.replace(/\D/g, '');
+      if (!pendingPhone || !/^\d{6}$/.test(token)) {
+        phoneError.textContent = 'أدخل رمز تحقق مكوناً من 6 أرقام.';
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'جاري التحقق...';
+      try {
+        await verifyPhoneOtp(pendingPhone, token);
+        await finishLogin();
+      } catch (error) {
+        phoneError.textContent = translateAuthError(error?.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = 'تأكيد الرمز والدخول';
+      }
+    });
+
+    document.getElementById('changePhoneBtn').addEventListener('click', () => {
+      pendingPhone = '';
+      document.getElementById('phoneOtp').value = '';
+      otpStep.style.display = 'none';
+      phoneStep.style.display = 'block';
+      phoneError.textContent = '';
+      phoneSuccess.textContent = '';
+    });
+
+    document.getElementById('emailForm').addEventListener('submit', async event => {
       event.preventDefault();
-      event.stopPropagation();
       const errorBox = document.getElementById('emailError');
       const button = document.getElementById('emailLoginBtn');
       errorBox.textContent = '';
-
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('emailPassword').value;
       if (!email || !password) {
