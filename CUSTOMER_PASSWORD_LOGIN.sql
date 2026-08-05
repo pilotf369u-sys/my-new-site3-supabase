@@ -191,5 +191,8 @@ grant execute on function public.admin_upsert_customer_account(uuid,text,text,te
 grant execute on function public.customer_password_login(text,text) to anon, authenticated;
 grant execute on function public.customer_portal_data(text) to anon, authenticated;
 
--- Give imported customers temporary passwords by editing each customer in the admin panel.
--- The password field is required for a new customer and optional when editing an existing customer.
+-- Force PostgREST/Supabase API to discover the new functions immediately.
+notify pgrst, 'reload schema';
+
+-- Existing imported customers receive a password by editing them once in the admin panel.
+-- The password is required for a new customer and optional when editing an existing customer.
