@@ -1,4 +1,4 @@
-const CLOUD_DB_VERSION = '20260805-4';
+const CLOUD_DB_VERSION = '20260805-5';
 
 self.addEventListener('install', () => self.skipWaiting());
 
