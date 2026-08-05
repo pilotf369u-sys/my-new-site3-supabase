@@ -1,4 +1,4 @@
-const CLOUD_DB_VERSION = '20260805-5';
+const CLOUD_DB_VERSION = '20260805-6';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -42,7 +42,8 @@ self.addEventListener('fetch', event => {
       const bootstrap =
         '<script data-cloud-db="ready" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>' +
         `<script src="js/db.js?v=${CLOUD_DB_VERSION}"><\/script>` +
-        `<script src="js/customer-view-fix.js?v=${CLOUD_DB_VERSION}"><\/script>`;
+        `<script src="js/customer-view-fix.js?v=${CLOUD_DB_VERSION}"><\/script>` +
+        `<script src="js/index-auth-fix.js?v=${CLOUD_DB_VERSION}"><\/script>`;
 
       html = html.includes('</head>')
         ? html.replace('</head>', bootstrap + '</head>')
