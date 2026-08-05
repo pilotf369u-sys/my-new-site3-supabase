@@ -1,12 +1,20 @@
-import { supabase } from './supabase-client.js';
+import { supabase } from './supabase-client.js?v=20260805-21';
 
-// The old service worker rewrote HTML and caused two competing data paths.
-// Retire it; all active pages now connect to Supabase directly.
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations()
-    .then(registrations => Promise.all(registrations.map(registration => registration.unregister())))
-    .catch(console.error);
+// Remove every legacy service worker and its Cache Storage entries.
+// Business data is loaded directly from Supabase and must never be served by an old worker.
+export async function removeLegacyServiceWorkers() {
+  if ('serviceWorker' in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map(registration => registration.unregister()));
+  }
+
+  if ('caches' in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(key => caches.delete(key)));
+  }
 }
+
+removeLegacyServiceWorkers().catch(console.error);
 
 export function normalizePhone(countryCode, phone) {
   return `${countryCode.replace(/[^\d+]/g, '')}${phone.replace(/\D/g, '').replace(/^0+/, '')}`;
