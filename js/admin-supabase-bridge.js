@@ -1,4 +1,4 @@
-import { supabase } from './supabase-client.js?v=20260805-26';
+import { supabase } from './supabase-client.js?v=20260805-27';
 
 const digits = value => String(value ?? '').replace(/\D/g, '');
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -10,10 +10,6 @@ let orders = [];
 
 function customerCode() {
   return `CUS-${Math.floor(1000 + Math.random() * 9000)}`;
-}
-
-function databaseId(customer) {
-  return customer?.id || null;
 }
 
 function stateOf(customer) {
@@ -94,8 +90,10 @@ function renderOrders() {
 }
 
 function resetCustomerForm() {
-  const ids = ['custName','custCode','custEmail','custPass','custPhone','custState','custAddress'];
-  ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['custName','custCode','custEmail','custPass','custPhone','custState','custAddress'].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
   const country = document.getElementById('custCountry');
   if (country) country.value = '';
   const edit = document.getElementById('editCustomerIndex');
@@ -106,6 +104,36 @@ function resetCustomerForm() {
   if (save) save.textContent = '+ حفظ وإضافة العميل';
   const cancel = document.getElementById('cancelEditBtn');
   if (cancel) cancel.style.display = 'none';
+}
+
+async function verifySavedCustomer(customerId, phone, password) {
+  const { data: savedCustomer, error: readError } = await supabase
+    .from('customers')
+    .select('id,phone,name,customer_code,status')
+    .eq('id', customerId)
+    .single();
+
+  if (readError || !savedCustomer) {
+    throw new Error(`تم إرسال الحفظ، لكن تعذر العثور على العميل في Supabase: ${readError?.message || 'السجل غير موجود'}`);
+  }
+
+  if (digits(savedCustomer.phone) !== digits(phone)) {
+    throw new Error(`تم حفظ رقم مختلف في Supabase: ${savedCustomer.phone}`);
+  }
+
+  const { data: loginResult, error: loginError } = await supabase.rpc('customer_password_login_v2', {
+    p_phone: savedCustomer.phone,
+    p_password: password
+  });
+
+  if (loginError) {
+    throw new Error(`تم حفظ العميل لكن اختبار تسجيل الدخول أعاد خطأ: ${loginError.message}`);
+  }
+  if (!loginResult?.ok) {
+    throw new Error(loginResult?.message || 'تم حفظ العميل، لكن كلمة المرور لم تقبلها دالة تسجيل الدخول.');
+  }
+
+  return savedCustomer;
 }
 
 async function saveCustomerData() {
@@ -126,9 +154,10 @@ async function saveCustomerData() {
 
   const button = document.getElementById('saveCustomerBtn');
   if (button) button.disabled = true;
+
   try {
-    const { error } = await supabase.rpc('admin_upsert_customer_account_v2', {
-      p_customer_id: databaseId(existing),
+    const { data: customerId, error } = await supabase.rpc('admin_upsert_customer_account_v2', {
+      p_customer_id: existing?.id || null,
       p_name: name,
       p_phone: phone,
       p_password: password,
@@ -139,14 +168,22 @@ async function saveCustomerData() {
       p_state: state || null
     });
     if (error) throw error;
+    if (!customerId) throw new Error('دالة الحفظ لم تُرجع رقم العميل.');
+
+    if (!existing || password) {
+      await verifySavedCustomer(customerId, phone, password);
+    }
+
     await loadCloudData();
     resetCustomerForm();
     renderCustomers();
     renderOrders();
-    alert(existing ? 'تم تحديث العميل في Supabase.' : 'تم إنشاء العميل في Supabase ويمكنه تسجيل الدخول بنفس الرقم وكلمة المرور.');
+    alert(existing
+      ? 'تم تحديث العميل في Supabase بنجاح.'
+      : 'تم إنشاء العميل واختبار تسجيل الدخول بنفس الرقم وكلمة المرور بنجاح.');
   } catch (error) {
-    console.error('[Admin customer save]', error);
-    alert(error.message || 'تعذر حفظ العميل في Supabase.');
+    console.error('[Admin customer save and verification]', error);
+    alert(error.message || 'تعذر حفظ العميل أو التحقق من تسجيل دخوله.');
   } finally {
     if (button) button.disabled = false;
   }
@@ -216,17 +253,27 @@ function cleanCountryLabels() {
 
 async function install() {
   cleanCountryLabels();
-  window.initDefaultCustomers = () => {};
-  window.loadCustomers = renderCustomers;
-  window.loadAdminOrders = renderOrders;
-  window.saveCustomerData = saveCustomerData;
-  window.editCustomer = editCustomer;
-  window.deleteCustomer = deleteCustomer;
-  window.loginAsCustomer = loginAsCustomer;
-  window.resetCustomerForm = resetCustomerForm;
-  window.updateCloudOrderStatus = updateCloudOrderStatus;
-  window.openCloudOrderDetails = openCloudOrderDetails;
-  window.updateCountryCode = () => {};
+  const bindings = {
+    initDefaultCustomers: () => {},
+    loadCustomers: renderCustomers,
+    loadAdminOrders: renderOrders,
+    saveCustomerData,
+    editCustomer,
+    deleteCustomer,
+    loginAsCustomer,
+    resetCustomerForm,
+    updateCloudOrderStatus,
+    openCloudOrderDetails,
+    updateCountryCode: () => {}
+  };
+
+  Object.entries(bindings).forEach(([name, value]) => {
+    Object.defineProperty(window, name, {
+      value,
+      writable: false,
+      configurable: false
+    });
+  });
 
   try {
     await loadCloudData();
