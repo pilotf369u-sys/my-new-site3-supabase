@@ -1,8 +1,6 @@
--- Run this in Supabase SQL Editor.
--- Safe to run more than once.
+-- Run this once in Supabase SQL Editor.
 -- Customer accounts are created by staff with phone, password and customer code.
 
-create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
 
 alter table public.customers
@@ -66,7 +64,7 @@ begin
   end if;
 
   if v_code is null then
-    v_code := 'CUS-' || upper(substr(encode(extensions.gen_random_bytes(4), 'hex'), 1, 8));
+    v_code := 'CUS-' || upper(substr(replace(pg_catalog.gen_random_uuid()::text, '-', ''), 1, 8));
   end if;
 
   if p_customer_id is null then
@@ -74,10 +72,21 @@ begin
       phone, name, email, country, address, status, balance,
       customer_code, password_hash, payload
     ) values (
-      v_phone, trim(p_name), nullif(trim(p_email), ''), nullif(trim(p_country), ''),
-      nullif(trim(p_address), ''), 'active', 0, v_code,
+      v_phone,
+      trim(p_name),
+      nullif(trim(p_email), ''),
+      nullif(trim(p_country), ''),
+      nullif(trim(p_address), ''),
+      'active',
+      0,
+      v_code,
       extensions.crypt(p_password, extensions.gen_salt('bf')),
-      jsonb_strip_nulls(jsonb_build_object('code', v_code, 'state', nullif(trim(p_state), '')))
+      jsonb_strip_nulls(
+        jsonb_build_object(
+          'code', v_code,
+          'state', nullif(trim(p_state), '')
+        )
+      )
     )
     returning id into v_id;
   else
@@ -94,12 +103,19 @@ begin
           else password_hash
         end,
         payload = coalesce(payload, '{}'::jsonb) ||
-          jsonb_strip_nulls(jsonb_build_object('code', v_code, 'state', nullif(trim(p_state), ''))),
+          jsonb_strip_nulls(
+            jsonb_build_object(
+              'code', v_code,
+              'state', nullif(trim(p_state), '')
+            )
+          ),
         updated_at = now()
     where id = p_customer_id
     returning id into v_id;
 
-    if v_id is null then raise exception 'Customer not found'; end if;
+    if v_id is null then
+      raise exception 'Customer not found';
+    end if;
   end if;
 
   return v_id;
@@ -128,13 +144,27 @@ begin
   limit 1;
 
   if v_customer.id is null then
-    return jsonb_build_object('ok', false, 'message', 'رقم الهاتف أو كلمة المرور غير صحيحة');
+    return jsonb_build_object(
+      'ok', false,
+      'message', 'رقم الهاتف أو كلمة المرور غير صحيحة'
+    );
   end if;
 
-  delete from public.customer_portal_sessions where expires_at < now();
-  v_token := encode(extensions.gen_random_bytes(32), 'hex');
+  delete from public.customer_portal_sessions
+  where expires_at < now();
 
-  insert into public.customer_portal_sessions(token_hash, customer_id, expires_at)
+  -- Generate a strong session token from two independent UUID values.
+  -- This avoids relying on gen_random_bytes(), which is not exposed
+  -- consistently across all Supabase projects.
+  v_token :=
+    replace(pg_catalog.gen_random_uuid()::text, '-', '') ||
+    replace(pg_catalog.gen_random_uuid()::text, '-', '');
+
+  insert into public.customer_portal_sessions(
+    token_hash,
+    customer_id,
+    expires_at
+  )
   values (
     encode(extensions.digest(v_token, 'sha256'), 'hex'),
     v_customer.id,
@@ -148,7 +178,10 @@ begin
       'id', v_customer.id,
       'name', v_customer.name,
       'phone', v_customer.phone,
-      'code', coalesce(v_customer.customer_code, v_customer.payload ->> 'code'),
+      'code', coalesce(
+        v_customer.customer_code,
+        v_customer.payload ->> 'code'
+      ),
       'country', v_customer.country,
       'address', v_customer.address,
       'role', 'customer'
@@ -176,14 +209,21 @@ begin
   limit 1;
 
   if v_customer.id is null then
-    return jsonb_build_object('ok', false, 'message', 'انتهت جلسة العميل');
+    return jsonb_build_object(
+      'ok', false,
+      'message', 'انتهت جلسة العميل'
+    );
   end if;
 
-  select coalesce(jsonb_agg(to_jsonb(o) order by o.created_at desc), '[]'::jsonb)
+  select coalesce(
+    jsonb_agg(to_jsonb(o) order by o.created_at desc),
+    '[]'::jsonb
+  )
   into v_orders
   from public.orders o
   where o.customer_id = v_customer.id
-     or public.normalize_customer_phone(o.customer_phone) = public.normalize_customer_phone(v_customer.phone);
+     or public.normalize_customer_phone(o.customer_phone) =
+        public.normalize_customer_phone(v_customer.phone);
 
   return jsonb_build_object(
     'ok', true,
@@ -193,12 +233,23 @@ begin
 end;
 $$;
 
-revoke all on function public.admin_upsert_customer_account(uuid,text,text,text,text,text,text,text,text) from public;
-grant execute on function public.admin_upsert_customer_account(uuid,text,text,text,text,text,text,text,text) to authenticated;
-grant execute on function public.customer_password_login(text,text) to anon, authenticated;
-grant execute on function public.customer_portal_data(text) to anon, authenticated;
+revoke all on function public.admin_upsert_customer_account(
+  uuid,text,text,text,text,text,text,text,text
+) from public;
 
+grant execute on function public.admin_upsert_customer_account(
+  uuid,text,text,text,text,text,text,text,text
+) to authenticated;
+
+grant execute on function public.customer_password_login(text,text)
+  to anon, authenticated;
+
+grant execute on function public.customer_portal_data(text)
+  to anon, authenticated;
+
+-- Force PostgREST/Supabase API to discover the updated functions immediately.
 notify pgrst, 'reload schema';
 
--- Existing imported customers receive a password by editing them once in the admin panel.
--- The password is required for a new customer and optional when editing an existing customer.
+-- Existing imported customers receive a password by editing them once
+-- in the admin panel. The password is required for a new customer and
+-- optional when editing an existing customer.
