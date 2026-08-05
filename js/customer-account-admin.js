@@ -20,6 +20,12 @@
     return customer.dbId || customer.cloudId || null;
   }
 
+  function makeCustomerCode() {
+    const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const timePart = Date.now().toString(36).slice(-4).toUpperCase();
+    return `CUS-${randomPart}${timePart}`;
+  }
+
   function setValue(id, value) {
     const element = document.getElementById(id);
     if (element) element.value = value ?? '';
@@ -43,31 +49,13 @@
         setTimeout(() => {
           window.editCustomer = function editCustomer(index) {
             const customer = getExistingCustomer(Number(index));
-
-            if (!customer) {
-              alert('تعذر العثور على بيانات العميل. أعد تحميل الصفحة.');
-              return;
-            }
-
-            if (!getDatabaseId(customer)) {
-              console.error('[Customer Accounts] Missing Supabase UUID:', customer);
-              alert('تعذر تحديد سجل العميل في Supabase. أعد تحميل الصفحة.');
-              return;
-            }
+            if (!customer) return alert('تعذر العثور على بيانات العميل. أعد تحميل الصفحة.');
+            if (!getDatabaseId(customer)) return alert('تعذر تحديد سجل العميل في Supabase. أعد تحميل الصفحة.');
 
             setValue('editCustomerIndex', String(index));
             setValue('custName', customer.name || '');
-            setValue(
-              'custCode',
-              customer.customer_code ||
-                customer.code ||
-                customer.payload?.code ||
-                '',
-            );
+            setValue('custCode', customer.customer_code || customer.code || customer.payload?.code || '');
             setValue('custEmail', customer.email || '');
-
-            // Password hashes are never returned from Supabase. Leaving this
-            // blank keeps the existing password; entering a value replaces it.
             setValue('custPass', '');
             setValue('custCountry', customer.country || '');
             setValue('custPhone', customer.phone || '');
@@ -76,62 +64,28 @@
 
             const title = document.getElementById('customerFormTitle');
             if (title) title.textContent = `تعديل بيانات العميل: ${customer.name || ''}`;
-
             const saveButton = document.getElementById('saveCustomerBtn');
             if (saveButton) saveButton.textContent = 'حفظ التعديلات';
-
             const cancelButton = document.getElementById('cancelEditBtn');
             if (cancelButton) cancelButton.style.display = 'inline-block';
-
-            const formTitle = title || document.getElementById('customers');
-            formTitle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            (title || document.getElementById('customers'))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           };
 
           window.deleteCustomer = async function deleteCustomer(index) {
             const customer = getExistingCustomer(Number(index));
-
-            if (!customer) {
-              alert('تعذر العثور على بيانات العميل. أعد تحميل الصفحة.');
-              return;
-            }
-
+            if (!customer) return alert('تعذر العثور على بيانات العميل. أعد تحميل الصفحة.');
             const databaseId = getDatabaseId(customer);
-            if (!databaseId) {
-              console.error('[Customer Accounts] Missing UUID for deletion:', customer);
-              alert('تعذر تحديد سجل العميل في Supabase. أعد تحميل الصفحة.');
-              return;
-            }
-
-            const confirmed = window.confirm(
-              `هل أنت متأكد من حذف العميل «${customer.name || customer.phone}»؟\nسيتم حذف طلباته المرتبطة به أيضاً.`,
-            );
-            if (!confirmed) return;
+            if (!databaseId) return alert('تعذر تحديد سجل العميل في Supabase. أعد تحميل الصفحة.');
+            if (!window.confirm(`هل أنت متأكد من حذف العميل «${customer.name || customer.phone}»؟\nسيتم حذف طلباته المرتبطة به أيضاً.`)) return;
 
             const client = window.cloudDb?.client;
-            if (!client) {
-              alert('تعذر الاتصال بقاعدة البيانات. أعد تحميل الصفحة.');
-              return;
-            }
+            if (!client) return alert('تعذر الاتصال بقاعدة البيانات. أعد تحميل الصفحة.');
 
             try {
-              const { data, error } = await client
-                .from('customers')
-                .delete()
-                .eq('id', databaseId)
-                .select('id');
-
+              const { data, error } = await client.from('customers').delete().eq('id', databaseId).select('id');
               if (error) throw error;
-
-              if (!data?.length) {
-                throw new Error(
-                  'لم يتم حذف السجل. تحقق من صلاحية الأدمن وسياسات RLS.',
-                );
-              }
-
-              if (typeof window.resetCustomerForm === 'function') {
-                window.resetCustomerForm();
-              }
-
+              if (!data?.length) throw new Error('لم يتم حذف السجل. تحقق من صلاحية الأدمن وسياسات RLS.');
+              if (typeof window.resetCustomerForm === 'function') window.resetCustomerForm();
               await window.cloudDb.reload();
               refreshCustomerViews();
               alert('تم حذف العميل نهائياً من Supabase.');
@@ -143,106 +97,57 @@
 
           window.saveCustomerData = async function saveCustomerData() {
             const client = window.cloudDb?.client;
-            if (!client) {
-              alert('تعذر الاتصال بقاعدة البيانات. أعد تحميل الصفحة.');
-              return;
-            }
+            if (!client) return alert('تعذر الاتصال بقاعدة البيانات. أعد تحميل الصفحة.');
 
             const name = document.getElementById('custName')?.value.trim() || '';
-            const code = document.getElementById('custCode')?.value.trim() || '';
+            const inputCode = document.getElementById('custCode')?.value.trim() || '';
             const email = document.getElementById('custEmail')?.value.trim() || '';
             const password = document.getElementById('custPass')?.value || '';
             const country = document.getElementById('custCountry')?.value || '';
             const phone = document.getElementById('custPhone')?.value.trim() || '';
             const state = document.getElementById('custState')?.value.trim() || '';
             const address = document.getElementById('custAddress')?.value.trim() || '';
-            const editIndex = Number.parseInt(
-              document.getElementById('editCustomerIndex')?.value || '-1',
-              10,
-            );
-
+            const editIndex = Number.parseInt(document.getElementById('editCustomerIndex')?.value || '-1', 10);
             const existing = getExistingCustomer(editIndex);
             const databaseId = getDatabaseId(existing);
 
-            if (!name || !country || !phone || !address) {
-              alert('الرجاء إدخال الاسم والدولة والهاتف والعنوان.');
-              return;
-            }
+            if (!name || !country || !phone || !address) return alert('الرجاء إدخال الاسم والدولة والهاتف والعنوان.');
+            if (!existing && password.length < 4) return alert('كلمة مرور العميل يجب أن تكون 4 أحرف أو أرقام على الأقل.');
+            if (existing && password && password.length < 4) return alert('كلمة المرور الجديدة للعميل يجب أن تكون 4 أحرف أو أرقام على الأقل.');
+            if (existing && !databaseId) return alert('تعذر تحديد سجل العميل في Supabase. أعد تحميل الصفحة ثم حاول مجدداً.');
 
-            if (!existing && password.length < 4) {
-              alert('كلمة مرور العميل يجب أن تكون 4 أحرف أو أرقام على الأقل.');
-              return;
-            }
-
-            if (existing && password && password.length < 4) {
-              alert('كلمة المرور الجديدة للعميل يجب أن تكون 4 أحرف أو أرقام على الأقل.');
-              return;
-            }
-
-            if (existing && !databaseId) {
-              console.error('[Customer Accounts] Missing Supabase UUID:', existing);
-              alert('تعذر تحديد سجل العميل في Supabase. أعد تحميل الصفحة ثم حاول مجدداً.');
-              return;
-            }
+            const finalCode = inputCode || existing?.customer_code || existing?.code || existing?.payload?.code || makeCustomerCode();
+            setValue('custCode', finalCode);
 
             const button = document.getElementById('saveCustomerBtn');
             const oldText = button?.textContent || 'حفظ وإضافة العميل';
-
-            if (button) {
-              button.disabled = true;
-              button.textContent = 'جاري الحفظ...';
-            }
+            if (button) { button.disabled = true; button.textContent = 'جاري الحفظ...'; }
 
             try {
-              const { data, error } = await client.rpc(
-                'admin_upsert_customer_account',
-                {
-                  p_customer_id: databaseId,
-                  p_name: name,
-                  p_phone: phone,
-                  p_password: password,
-                  p_customer_code:
-                    code ||
-                    existing?.customer_code ||
-                    existing?.code ||
-                    existing?.payload?.code ||
-                    null,
-                  p_email: email || null,
-                  p_country: country || null,
-                  p_address: address || null,
-                  p_state: state || null,
-                },
-              );
-
+              const { data, error } = await client.rpc('admin_upsert_customer_account', {
+                p_customer_id: databaseId,
+                p_name: name,
+                p_phone: phone,
+                p_password: password,
+                p_customer_code: finalCode,
+                p_email: email || null,
+                p_country: country || null,
+                p_address: address || null,
+                p_state: state || null,
+              });
               if (error) throw error;
 
               await window.cloudDb.reload();
-
-              if (typeof window.resetCustomerForm === 'function') {
-                window.resetCustomerForm();
-              }
+              if (typeof window.resetCustomerForm === 'function') window.resetCustomerForm();
               refreshCustomerViews();
-
-              alert(
-                existing
-                  ? password
-                    ? 'تم تحديث بيانات العميل وتعيين كلمة المرور الجديدة بنجاح.'
-                    : 'تم تحديث بيانات العميل بنجاح دون تغيير كلمة المرور.'
-                  : 'تم إنشاء حساب العميل وكلمة المرور بنجاح.',
-              );
-
+              alert(existing ? (password ? 'تم تحديث بيانات العميل وتعيين كلمة المرور الجديدة بنجاح.' : 'تم تحديث بيانات العميل بنجاح دون تغيير كلمة المرور.') : 'تم إنشاء حساب العميل وكلمة المرور بنجاح.');
               console.info('[Customer Accounts] Saved customer UUID:', data);
             } catch (error) {
               console.error('[Customer Accounts] Save failed:', error);
-
-              const details = String(
-                `${error?.message || ''} ${error?.details || ''}`,
-              ).toLowerCase();
-
-              if (
-                details.includes('could not find the function') ||
-                details.includes('schema cache')
-              ) {
+              const details = String(`${error?.message || ''} ${error?.details || ''}`).toLowerCase();
+              if (details.includes('gen_random_bytes')) {
+                alert('قاعدة البيانات ما زالت تستخدم نسخة قديمة من دالة إنشاء الحساب. نفّذ أحدث FIX_CUSTOMER_LOGIN_FUNCTIONS.sql مرة واحدة.');
+              } else if (details.includes('could not find the function') || details.includes('schema cache')) {
                 alert('دالة حفظ حساب العميل غير متاحة في Supabase. أعد تحميل الصفحة.');
               } else if (details.includes('duplicate') || details.includes('unique')) {
                 alert('رقم الهاتف أو كود العميل مستخدم في حساب آخر.');
@@ -250,10 +155,7 @@
                 alert(error?.message || 'تعذر حفظ حساب العميل.');
               }
             } finally {
-              if (button) {
-                button.disabled = false;
-                button.textContent = oldText;
-              }
+              if (button) { button.disabled = false; button.textContent = oldText; }
             }
           };
 
@@ -262,9 +164,6 @@
       });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', install, { once: true });
-  } else {
-    install();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
+  else install();
 })();
