@@ -1,4 +1,4 @@
-const CLOUD_DB_VERSION = '20260805-15';
+const CLOUD_DB_VERSION = '20260805-16';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -32,28 +32,21 @@ self.addEventListener('fetch', event => {
 
     let html = await response.text();
 
-    // The legacy admin page starts rendering from native localStorage through
-    // its body onload handler. Remove that handler to prevent it racing with
-    // the Supabase load and restoring stale/default customers.
     html = html.replace(/<body\s+onload=(['"])[\s\S]*?\1\s*>/i, '<body>');
 
-    // Delay legacy inline scripts that access localStorage until db.js has
-    // replaced it with the cloud-backed storage adapter.
     html = html.replace(
       /<script(?![^>]*\bsrc=)(?![^>]*type=["']module["'])[^>]*>([\s\S]*?localStorage[\s\S]*?)<\/script>/gi,
       (_, code) => `<script>window.cloudDbReady.then(function(){(0,eval)(${JSON.stringify(code)});});<\/script>`,
     );
 
     const bootstrap =
+      `<script src="js/cloud-storage-reset.js?v=${CLOUD_DB_VERSION}"><\/script>` +
       '<script data-cloud-db="ready" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>' +
       `<script src="js/db.js?v=${CLOUD_DB_VERSION}"><\/script>` +
       `<script src="js/customer-view-fix.js?v=${CLOUD_DB_VERSION}"><\/script>` +
       `<script src="js/customer-account-admin.js?v=${CLOUD_DB_VERSION}"><\/script>` +
       `<script src="js/index-auth-fix.js?v=${CLOUD_DB_VERSION}"><\/script>`;
 
-    // Initialise visible admin sections only after the latest Supabase SELECTs
-    // and all wrapped legacy functions are ready. Do not run
-    // initDefaultCustomers(); Supabase is the only source of truth.
     const cloudAdminInit = `<script data-cloud-admin-init="${CLOUD_DB_VERSION}">
       window.cloudDbReady.then(async function () {
         if (window.cloudDb && typeof window.cloudDb.reload === 'function') {
@@ -74,7 +67,7 @@ self.addEventListener('fetch', event => {
       });
     <\/script>`;
 
-    // Always replace older injected assets and initialisers.
+    html = html.replace(/<script src="js\/cloud-storage-reset\.js\?v=[^"]+"><\/script>/i, '');
     html = html.replace(/<script data-cloud-db="ready"[\s\S]*?<script src="js\/index-auth-fix\.js\?v=[^"]+"><\/script>/i, '');
     html = html.replace(/<script data-cloud-admin-init="[^"]+">[\s\S]*?<\/script>/i, '');
 
