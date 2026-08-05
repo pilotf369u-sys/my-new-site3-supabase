@@ -1,7 +1,9 @@
--- Run this once in Supabase SQL Editor.
+-- Run this in Supabase SQL Editor.
+-- Safe to run more than once.
 -- Customer accounts are created by staff with phone, password and customer code.
 
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 alter table public.customers
   add column if not exists customer_code text,
@@ -64,7 +66,7 @@ begin
   end if;
 
   if v_code is null then
-    v_code := 'CUS-' || upper(substr(encode(gen_random_bytes(4), 'hex'), 1, 8));
+    v_code := 'CUS-' || upper(substr(encode(extensions.gen_random_bytes(4), 'hex'), 1, 8));
   end if;
 
   if p_customer_id is null then
@@ -74,7 +76,7 @@ begin
     ) values (
       v_phone, trim(p_name), nullif(trim(p_email), ''), nullif(trim(p_country), ''),
       nullif(trim(p_address), ''), 'active', 0, v_code,
-      crypt(p_password, gen_salt('bf')),
+      extensions.crypt(p_password, extensions.gen_salt('bf')),
       jsonb_strip_nulls(jsonb_build_object('code', v_code, 'state', nullif(trim(p_state), '')))
     )
     returning id into v_id;
@@ -87,7 +89,8 @@ begin
         address = nullif(trim(p_address), ''),
         customer_code = v_code,
         password_hash = case
-          when length(coalesce(p_password, '')) >= 4 then crypt(p_password, gen_salt('bf'))
+          when length(coalesce(p_password, '')) >= 4
+            then extensions.crypt(p_password, extensions.gen_salt('bf'))
           else password_hash
         end,
         payload = coalesce(payload, '{}'::jsonb) ||
@@ -121,7 +124,7 @@ begin
   where public.normalize_customer_phone(phone) = public.normalize_customer_phone(p_phone)
     and status = 'active'
     and password_hash is not null
-    and password_hash = crypt(p_password, password_hash)
+    and password_hash = extensions.crypt(p_password, password_hash)
   limit 1;
 
   if v_customer.id is null then
@@ -129,10 +132,14 @@ begin
   end if;
 
   delete from public.customer_portal_sessions where expires_at < now();
-  v_token := encode(gen_random_bytes(32), 'hex');
+  v_token := encode(extensions.gen_random_bytes(32), 'hex');
 
   insert into public.customer_portal_sessions(token_hash, customer_id, expires_at)
-  values (encode(digest(v_token, 'sha256'), 'hex'), v_customer.id, now() + interval '30 days');
+  values (
+    encode(extensions.digest(v_token, 'sha256'), 'hex'),
+    v_customer.id,
+    now() + interval '30 days'
+  );
 
   return jsonb_build_object(
     'ok', true,
@@ -163,7 +170,7 @@ begin
   select c.* into v_customer
   from public.customer_portal_sessions s
   join public.customers c on c.id = s.customer_id
-  where s.token_hash = encode(digest(p_token, 'sha256'), 'hex')
+  where s.token_hash = encode(extensions.digest(p_token, 'sha256'), 'hex')
     and s.expires_at > now()
     and c.status = 'active'
   limit 1;
@@ -191,7 +198,6 @@ grant execute on function public.admin_upsert_customer_account(uuid,text,text,te
 grant execute on function public.customer_password_login(text,text) to anon, authenticated;
 grant execute on function public.customer_portal_data(text) to anon, authenticated;
 
--- Force PostgREST/Supabase API to discover the new functions immediately.
 notify pgrst, 'reload schema';
 
 -- Existing imported customers receive a password by editing them once in the admin panel.
