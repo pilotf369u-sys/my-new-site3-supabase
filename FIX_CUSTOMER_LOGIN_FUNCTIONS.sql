@@ -24,7 +24,7 @@ as $$
 declare
   v_id uuid;
   v_phone text := public.normalize_customer_phone(p_phone);
-  v_code text := nullif(pg_catalog.trim(p_customer_code), '');
+  v_code text := nullif(pg_catalog.btrim(pg_catalog.coalesce(p_customer_code, '')), '');
   v_salt text;
   v_password_hash text;
 begin
@@ -32,7 +32,7 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  if v_phone = '' or pg_catalog.trim(pg_catalog.coalesce(p_name, '')) = '' then
+  if v_phone = '' or pg_catalog.btrim(pg_catalog.coalesce(p_name, '')) = '' then
     raise exception 'Name and phone are required';
   end if;
 
@@ -67,23 +67,23 @@ begin
       customer_code, password_hash, payload
     ) values (
       v_phone,
-      pg_catalog.trim(p_name),
-      nullif(pg_catalog.trim(p_email), ''),
-      nullif(pg_catalog.trim(p_country), ''),
-      nullif(pg_catalog.trim(p_address), ''),
+      pg_catalog.btrim(p_name),
+      nullif(pg_catalog.btrim(pg_catalog.coalesce(p_email, '')), ''),
+      nullif(pg_catalog.btrim(pg_catalog.coalesce(p_country, '')), ''),
+      nullif(pg_catalog.btrim(pg_catalog.coalesce(p_address, '')), ''),
       'active', 0, v_code, v_password_hash,
       pg_catalog.jsonb_strip_nulls(pg_catalog.jsonb_build_object(
         'code', v_code,
-        'state', nullif(pg_catalog.trim(p_state), '')
+        'state', nullif(pg_catalog.btrim(pg_catalog.coalesce(p_state, '')), '')
       ))
     ) returning id into v_id;
   else
     update public.customers
     set phone = v_phone,
-        name = pg_catalog.trim(p_name),
-        email = nullif(pg_catalog.trim(p_email), ''),
-        country = nullif(pg_catalog.trim(p_country), ''),
-        address = nullif(pg_catalog.trim(p_address), ''),
+        name = pg_catalog.btrim(p_name),
+        email = nullif(pg_catalog.btrim(pg_catalog.coalesce(p_email, '')), ''),
+        country = nullif(pg_catalog.btrim(pg_catalog.coalesce(p_country, '')), ''),
+        address = nullif(pg_catalog.btrim(pg_catalog.coalesce(p_address, '')), ''),
         customer_code = v_code,
         password_hash = case
           when v_password_hash is not null then v_password_hash
@@ -92,7 +92,7 @@ begin
         payload = pg_catalog.coalesce(payload, '{}'::jsonb) ||
           pg_catalog.jsonb_strip_nulls(pg_catalog.jsonb_build_object(
             'code', v_code,
-            'state', nullif(pg_catalog.trim(p_state), '')
+            'state', nullif(pg_catalog.btrim(pg_catalog.coalesce(p_state, '')), '')
           )),
         updated_at = pg_catalog.now()
     where id = p_customer_id
@@ -222,7 +222,6 @@ grant execute on function public.customer_portal_data_v2(text) to anon, authenti
 
 notify pgrst, 'reload schema';
 
--- Verification: must return exactly 3 rows, all ending with _v2.
 select p.proname
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
