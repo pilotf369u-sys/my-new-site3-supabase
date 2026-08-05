@@ -1,13 +1,10 @@
-import { supabase } from './supabase-client.js?v=20260805-21';
+import { supabase } from './supabase-client.js?v=20260805-26';
 
-// Remove every legacy service worker and its Cache Storage entries.
-// Business data is loaded directly from Supabase and must never be served by an old worker.
 export async function removeLegacyServiceWorkers() {
   if ('serviceWorker' in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();
     await Promise.all(registrations.map(registration => registration.unregister()));
   }
-
   if ('caches' in window) {
     const keys = await caches.keys();
     await Promise.all(keys.map(key => caches.delete(key)));
@@ -16,8 +13,8 @@ export async function removeLegacyServiceWorkers() {
 
 removeLegacyServiceWorkers().catch(console.error);
 
-export function normalizePhone(countryCode, phone) {
-  return `${countryCode.replace(/[^\d+]/g, '')}${phone.replace(/\D/g, '').replace(/^0+/, '')}`;
+export function normalizePhone(_countryCode, phone) {
+  return String(phone || '').replace(/\D/g, '');
 }
 
 export async function sendPhoneOtp({ phone, fullName = '', country = 'العراق', address = '', email = '' }) {
@@ -36,7 +33,8 @@ export async function verifyPhoneOtp(phone, token) {
 }
 
 export async function signInWithPhone(phone, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({ phone, password });
+  const normalized = String(phone || '').replace(/\D/g, '');
+  const { data, error } = await supabase.auth.signInWithPassword({ phone: `+${normalized}`, password });
   if (error) throw new Error(error.message || 'تعذر تسجيل الدخول برقم الهاتف.');
   return data;
 }
@@ -83,7 +81,7 @@ export async function syncLegacySession() {
 
 export function getDashboardPath(profile) {
   const paths = {
-    admin: 'admin-dashboard.html',
+    admin: 'admin.html?v=20260805-26',
     employee: 'employee-dashboard.html',
     delivery: 'delivery-dashboard.html',
     branch: 'branch-dashboard.html',
