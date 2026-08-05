@@ -10,18 +10,24 @@
     }
   }
 
-  function getExistingCustomer(editIndex) {
-    if (!Number.isInteger(editIndex) || editIndex < 0) return null;
-    return getCustomers()[editIndex] || null;
+  function getExistingCustomer(index) {
+    if (!Number.isInteger(index) || index < 0) return null;
+    return getCustomers()[index] || null;
   }
 
   function getDatabaseId(customer) {
     if (!customer) return null;
-
-    // db.js exposes the real Supabase UUID as dbId. The legacy `id` field may
-    // contain the visible customer code (CUS-xxxx), which is not a UUID and
-    // must never be sent as p_customer_id.
     return customer.dbId || customer.cloudId || null;
+  }
+
+  function setValue(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.value = value ?? '';
+  }
+
+  function refreshCustomerViews() {
+    if (typeof window.loadCustomers === 'function') window.loadCustomers();
+    if (typeof window.loadAdminOrders === 'function') window.loadAdminOrders();
   }
 
   function install() {
@@ -34,9 +40,107 @@
         console.error('[Customer Accounts] Cloud initialization failed:', error);
       })
       .finally(() => {
-        // Install after the legacy page functions have finished loading so this
-        // implementation remains the active save handler.
         setTimeout(() => {
+          window.editCustomer = function editCustomer(index) {
+            const customer = getExistingCustomer(Number(index));
+
+            if (!customer) {
+              alert('تعذر العثور على بيانات العميل. أعد تحميل الصفحة.');
+              return;
+            }
+
+            if (!getDatabaseId(customer)) {
+              console.error('[Customer Accounts] Missing Supabase UUID:', customer);
+              alert('تعذر تحديد سجل العميل في Supabase. أعد تحميل الصفحة.');
+              return;
+            }
+
+            setValue('editCustomerIndex', String(index));
+            setValue('custName', customer.name || '');
+            setValue(
+              'custCode',
+              customer.customer_code ||
+                customer.code ||
+                customer.payload?.code ||
+                '',
+            );
+            setValue('custEmail', customer.email || '');
+
+            // Password hashes are never returned from Supabase. Leaving this
+            // blank keeps the existing password; entering a value replaces it.
+            setValue('custPass', '');
+            setValue('custCountry', customer.country || '');
+            setValue('custPhone', customer.phone || '');
+            setValue('custState', customer.state || customer.payload?.state || '');
+            setValue('custAddress', customer.address || '');
+
+            const title = document.getElementById('customerFormTitle');
+            if (title) title.textContent = `تعديل بيانات العميل: ${customer.name || ''}`;
+
+            const saveButton = document.getElementById('saveCustomerBtn');
+            if (saveButton) saveButton.textContent = 'حفظ التعديلات';
+
+            const cancelButton = document.getElementById('cancelEditBtn');
+            if (cancelButton) cancelButton.style.display = 'inline-block';
+
+            const formTitle = title || document.getElementById('customers');
+            formTitle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          };
+
+          window.deleteCustomer = async function deleteCustomer(index) {
+            const customer = getExistingCustomer(Number(index));
+
+            if (!customer) {
+              alert('تعذر العثور على بيانات العميل. أعد تحميل الصفحة.');
+              return;
+            }
+
+            const databaseId = getDatabaseId(customer);
+            if (!databaseId) {
+              console.error('[Customer Accounts] Missing UUID for deletion:', customer);
+              alert('تعذر تحديد سجل العميل في Supabase. أعد تحميل الصفحة.');
+              return;
+            }
+
+            const confirmed = window.confirm(
+              `هل أنت متأكد من حذف العميل «${customer.name || customer.phone}»؟\nسيتم حذف طلباته المرتبطة به أيضاً.`,
+            );
+            if (!confirmed) return;
+
+            const client = window.cloudDb?.client;
+            if (!client) {
+              alert('تعذر الاتصال بقاعدة البيانات. أعد تحميل الصفحة.');
+              return;
+            }
+
+            try {
+              const { data, error } = await client
+                .from('customers')
+                .delete()
+                .eq('id', databaseId)
+                .select('id');
+
+              if (error) throw error;
+
+              if (!data?.length) {
+                throw new Error(
+                  'لم يتم حذف السجل. تحقق من صلاحية الأدمن وسياسات RLS.',
+                );
+              }
+
+              if (typeof window.resetCustomerForm === 'function') {
+                window.resetCustomerForm();
+              }
+
+              await window.cloudDb.reload();
+              refreshCustomerViews();
+              alert('تم حذف العميل نهائياً من Supabase.');
+            } catch (error) {
+              console.error('[Customer Accounts] Delete failed:', error);
+              alert(error?.message || 'تعذر حذف العميل من قاعدة البيانات.');
+            }
+          };
+
           window.saveCustomerData = async function saveCustomerData() {
             const client = window.cloudDb?.client;
             if (!client) {
@@ -66,12 +170,12 @@
             }
 
             if (!existing && password.length < 4) {
-              alert('كلمة المرور يجب أن تكون 4 أحرف أو أرقام على الأقل.');
+              alert('كلمة مرور العميل يجب أن تكون 4 أحرف أو أرقام على الأقل.');
               return;
             }
 
             if (existing && password && password.length < 4) {
-              alert('كلمة المرور الجديدة يجب أن تكون 4 أحرف أو أرقام على الأقل.');
+              alert('كلمة المرور الجديدة للعميل يجب أن تكون 4 أحرف أو أرقام على الأقل.');
               return;
             }
 
@@ -117,12 +221,7 @@
               if (typeof window.resetCustomerForm === 'function') {
                 window.resetCustomerForm();
               }
-              if (typeof window.loadCustomers === 'function') {
-                window.loadCustomers();
-              }
-              if (typeof window.loadAdminOrders === 'function') {
-                window.loadAdminOrders();
-              }
+              refreshCustomerViews();
 
               alert(
                 existing
@@ -144,7 +243,7 @@
                 details.includes('could not find the function') ||
                 details.includes('schema cache')
               ) {
-                alert('دالة حفظ حساب العميل غير متاحة في Supabase. أعد تحميل الصفحة بعد تنفيذ ملف CUSTOMER_PASSWORD_LOGIN.sql.');
+                alert('دالة حفظ حساب العميل غير متاحة في Supabase. أعد تحميل الصفحة.');
               } else if (details.includes('duplicate') || details.includes('unique')) {
                 alert('رقم الهاتف أو كود العميل مستخدم في حساب آخر.');
               } else {
@@ -158,7 +257,7 @@
             }
           };
 
-          console.info('[Customer Accounts] Supabase account editor installed.');
+          console.info('[Customer Accounts] Supabase edit/delete handlers installed.');
         }, 0);
       });
   }
