@@ -10,7 +10,7 @@
   <style>html,body,#adminFrame{width:100%;height:100%;margin:0;border:0;display:block}</style>
 </head>
 <body>
-<iframe id="adminFrame" src="admin-dashboard.html?v=20260805-26" title="لوحة الإدارة"></iframe>
+<iframe id="adminFrame" src="admin-dashboard.html?v=20260805-27" title="لوحة الإدارة"></iframe>
 <script>
 (async function () {
   try {
@@ -32,8 +32,8 @@
     if (!doc || doc.querySelector('script[data-supabase-bridge]')) return;
     const script = doc.createElement('script');
     script.type = 'module';
-    script.dataset.supabaseBridge = '20260805-26';
-    script.src = 'js/admin-supabase-bridge.js?v=20260805-26';
+    script.dataset.supabaseBridge = '20260805-27';
+    script.src = 'js/admin-supabase-bridge.js?v=20260805-27';
     doc.head.appendChild(script);
   });
 })();
