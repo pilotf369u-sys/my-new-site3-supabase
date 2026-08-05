@@ -83,7 +83,7 @@ export async function syncLegacySession() {
 
 export function getDashboardPath(profile) {
   const paths = {
-    admin: 'admin-dashboard-clean.html',
+    admin: 'admin-dashboard.html',
     employee: 'employee-dashboard.html',
     delivery: 'delivery-dashboard.html',
     branch: 'branch-dashboard.html',
