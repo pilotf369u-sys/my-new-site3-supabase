@@ -3,38 +3,12 @@
 const digits=v=>String(v||'').replace(/\D/g,'');
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
 const afterReady=cb=>(window.cloudDbReady||Promise.resolve()).catch(console.error).finally(()=>setTimeout(cb,0));
-
 function mapOrders(rows){return(rows||[]).map(o=>({...o.payload,cloudId:o.id,id:o.legacy_id||o.payload?.id||o.id,status:o.status||o.payload?.status||'قيد المعالجة',date:o.payload?.date||o.payload?.createdAt||o.created_at,createdAt:o.created_at}));}
 function style(status){const s=String(status||'');if(s.includes('تسليم')||s.includes('توصيل'))return['#d4edda','#155724'];if(s.includes('ملغي')||s.includes('رفض'))return['#f8d7da','#721c24'];if(s.includes('شحن')||s.includes('توزيع')||s.includes('مخزن'))return['#cce5ff','#004085'];return['#e0f2fe','#0369a1'];}
-function render(customer,orders,isAdmin){
- window.cloudSelectedCustomer={...customer,...(customer.payload||{}),orders};window.cloudSelectedCustomerOrders=orders;
- const n=document.getElementById('userName');if(n)n.textContent=customer.name||'عزيزي العميل';
- const a=document.getElementById('userAddress');if(a)a.value=customer.address||'';
- const b=document.getElementById('backBtn');if(b){b.textContent=isAdmin?'العودة إلى لوحة الأدمن':'العودة للرئيسية';b.href=isAdmin?'admin-dashboard.html':'index.html';b.onclick=null;}
- const body=document.getElementById('customerOrdersTableBody');if(!body)return;
- if(!orders.length){body.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:#777">لا توجد طلبات لهذا العميل.</td></tr>';return;}
- let total=0;body.innerHTML=orders.map((o,i)=>{const p=String(o.price||(o.numericPrice!=null?`${o.currency||'$'}${o.numericPrice}`:'$0.00'));total+=parseFloat(p.replace(/[^0-9.]/g,''))||0;const [bg,c]=style(o.status);return `<tr><td><b>${esc(o.id)}</b></td><td>${esc(o.date||'غير محدد')}</td><td><span style="padding:5px 10px;background:${bg};color:${c};border-radius:4px">${esc(o.status)}</span></td><td><b>${esc(p)}</b></td><td><button class="btn-details" onclick="openCloudCustomerOrderDetails(${i})">عرض التفاصيل</button></td><td>—</td><td>—</td></tr>`}).join('');
- body.insertAdjacentHTML('beforeend',`<tr style="font-weight:bold"><td colspan="3">الإجمالي:</td><td colspan="4">$${total.toFixed(2)}</td></tr>`);
-}
-
-async function loadCustomerPortal(){
- const token=localStorage.getItem('customerPortalToken');if(!token||!window.cloudDb?.client)return false;
- const {data,error}=await window.cloudDb.client.rpc('customer_portal_data',{p_token:token});
- if(error){console.error('[Customer Portal] Load failed:',error);return false;}
- if(!data?.ok){console.error('[Customer Portal]',data?.message);localStorage.removeItem('customerPortalToken');return false;}
- render(data.customer,mapOrders(data.orders),false);console.info('[Customer Portal] Loaded',data.customer?.phone);return true;
-}
-
-async function loadAdminView(){
- const p=new URLSearchParams(location.search);const phone=digits(p.get('phone')||sessionStorage.getItem('selectedCustomerPhone'));if(!phone||!window.cloudDb?.client)return;
- const c=await window.cloudDb.client.from('customers').select('*');if(c.error){console.error('[Customer View] customers:',c.error);return;}
- const customer=(c.data||[]).find(x=>digits(x.phone)===phone);if(!customer)return;
- const o=await window.cloudDb.client.from('orders').select('*').or(`customer_id.eq.${customer.id},customer_phone.eq.${customer.phone}`).order('created_at',{ascending:false});if(o.error)console.error('[Customer View] orders:',o.error);
- render(customer,mapOrders(o.data),true);
-}
-
+function render(customer,orders,isAdmin){window.cloudSelectedCustomer={...customer,...(customer.payload||{}),orders};window.cloudSelectedCustomerOrders=orders;const n=document.getElementById('userName');if(n)n.textContent=customer.name||'عزيزي العميل';const a=document.getElementById('userAddress');if(a)a.value=customer.address||'';const b=document.getElementById('backBtn');if(b){b.textContent=isAdmin?'العودة إلى لوحة الأدمن':'العودة للرئيسية';b.href=isAdmin?'admin-dashboard.html':'index.html';b.onclick=null;}const body=document.getElementById('customerOrdersTableBody');if(!body)return;if(!orders.length){body.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:#777">لا توجد طلبات لهذا العميل.</td></tr>';return;}let total=0;body.innerHTML=orders.map((o,i)=>{const p=String(o.price||(o.numericPrice!=null?`${o.currency||'$'}${o.numericPrice}`:'$0.00'));total+=parseFloat(p.replace(/[^0-9.]/g,''))||0;const[bg,c]=style(o.status);return `<tr><td><b>${esc(o.id)}</b></td><td>${esc(o.date||'غير محدد')}</td><td><span style="padding:5px 10px;background:${bg};color:${c};border-radius:4px">${esc(o.status)}</span></td><td><b>${esc(p)}</b></td><td><button class="btn-details" onclick="openCloudCustomerOrderDetails(${i})">عرض التفاصيل</button></td><td>—</td><td>—</td></tr>`}).join('');body.insertAdjacentHTML('beforeend',`<tr style="font-weight:bold"><td colspan="3">الإجمالي:</td><td colspan="4">$${total.toFixed(2)}</td></tr>`);}
+async function loadCustomerPortal(){const token=localStorage.getItem('customerPortalToken');if(!token||!window.cloudDb?.client)return false;const{data,error}=await window.cloudDb.client.rpc('customer_portal_data_v2',{p_token:token});if(error){console.error('[Customer Portal v2] Load failed:',error);return false;}if(!data?.ok){console.error('[Customer Portal v2]',data?.message);localStorage.removeItem('customerPortalToken');return false;}render(data.customer,mapOrders(data.orders),false);console.info('[Customer Portal v2] Loaded',data.customer?.phone);return true;}
+async function loadAdminView(){const p=new URLSearchParams(location.search);const phone=digits(p.get('phone')||sessionStorage.getItem('selectedCustomerPhone'));if(!phone||!window.cloudDb?.client)return;const c=await window.cloudDb.client.from('customers').select('*');if(c.error){console.error('[Customer View] customers:',c.error);return;}const customer=(c.data||[]).find(x=>digits(x.phone)===phone);if(!customer)return;const o=await window.cloudDb.client.from('orders').select('*').or(`customer_id.eq.${customer.id},customer_phone.eq.${customer.phone}`).order('created_at',{ascending:false});if(o.error)console.error('[Customer View] orders:',o.error);render(customer,mapOrders(o.data),true);}
 function installAdminSelector(){window.loginAsCustomer=function(index){let list=[];try{list=JSON.parse(localStorage.getItem('adminCustomersList')||'[]')}catch{}const c=list[index];if(!c)return alert('العميل غير موجود');const phone=digits(c.phone);sessionStorage.setItem('selectedCustomerPhone',phone);sessionStorage.setItem('openedByAdmin','true');localStorage.setItem('viewedBy','admin');location.assign(`dashboard.html?phone=${encodeURIComponent(phone)}&view=admin`)};}
 window.openCloudCustomerOrderDetails=function(i){const o=window.cloudSelectedCustomerOrders?.[i];if(!o)return;const m=document.getElementById('customerOrderDetailsModal'),c=document.getElementById('customerOrderDetailsContent');if(!m||!c)return;c.innerHTML=`<p><strong>رقم الطلب:</strong> ${esc(o.id)}</p><p><strong>التاريخ:</strong> ${esc(o.date||'غير محدد')}</p><p><strong>السعر:</strong> ${esc(o.price||o.numericPrice||'$0.00')}</p><p><strong>الحالة:</strong> ${esc(o.status)}</p><p><strong>ملاحظات:</strong> ${esc(o.notes||'لا توجد')}</p>`;m.style.display='flex'};
-
 const path=location.pathname;if(path.endsWith('admin-dashboard.html'))afterReady(installAdminSelector);if(path.endsWith('dashboard.html'))afterReady(async()=>{const customerMode=new URLSearchParams(location.search).get('view')==='customer';if(customerMode&&await loadCustomerPortal())return;await loadAdminView();});
 })();
