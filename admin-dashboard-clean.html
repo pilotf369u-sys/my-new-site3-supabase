@@ -2,7 +2,26 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>لوحة الإدارة - MeshWar</title>
+<script>
+(async function removeOldBrowserCaches() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(registration => registration.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(key => caches.delete(key)));
+    }
+  } catch (error) {
+    console.error('[Cache cleanup]', error);
+  }
+})();
+</script>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Tahoma,sans-serif;background:#f4f7f6;color:#222}.top{background:#263746;color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}.top button{background:#c0392b}.wrap{max-width:1500px;margin:auto;padding:22px}.tabs{display:flex;gap:10px;margin-bottom:18px}.tabs button{background:#34495e}.tabs button.active{background:#16a085}.panel{display:none;background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 8px #0001}.panel.active{display:block}.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:18px}.form input,.form select{padding:10px;border:1px solid #ccd3d8;border-radius:6px;width:100%}button{border:0;border-radius:6px;padding:9px 14px;color:#fff;font-weight:bold;cursor:pointer}.green{background:#27ae60}.blue{background:#2980b9}.red{background:#c0392b}.gray{background:#7f8c8d}table{width:100%;border-collapse:collapse;min-width:900px}th,td{padding:10px;border:1px solid #e1e5e8;text-align:center}th{background:#2c3e50;color:#fff}.scroll{overflow:auto}.msg{margin:10px 0;min-height:24px;color:#b00020}.loading{padding:30px;text-align:center;color:#667}
 </style>
@@ -15,9 +34,9 @@
 <section id="customers" class="panel"><h2 id="formTitle">إضافة عميل</h2><input type="hidden" id="customerId"><div class="form"><input id="name" placeholder="اسم العميل"><input id="code" placeholder="كود العميل (يُنشأ تلقائياً)"><input id="email" placeholder="البريد الإلكتروني"><input id="password" type="password" placeholder="كلمة المرور"><select id="country"><option value="العراق">العراق</option><option value="تركيا">تركيا</option><option value="السعودية">السعودية</option><option value="الإمارات">الإمارات</option></select><input id="phone" placeholder="رقم الهاتف"><input id="state" placeholder="المدينة / المحافظة"><input id="address" placeholder="العنوان"></div><button id="saveBtn" class="green">حفظ العميل</button> <button id="cancelBtn" class="gray" style="display:none">إلغاء التعديل</button><div id="customersMsg" class="msg"></div><div class="scroll"><table><thead><tr><th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الدولة</th><th>العنوان</th><th>عدد الطلبات</th><th>الإجراء</th></tr></thead><tbody id="customersBody"><tr><td colspan="7" class="loading">جاري التحميل...</td></tr></tbody></table></div></section>
 </div>
 <script type="module">
-import { supabase } from './js/supabase-client.js?v=20260805-20';
+import { supabase } from './js/supabase-client.js?v=20260805-21';
 const $=id=>document.getElementById(id);let customers=[],orders=[];
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[c]));
 function shortCode(){return `CUS-${Math.floor(1000+Math.random()*9000)}`;}
 async function requireAdmin(){const {data:{user}}=await supabase.auth.getUser();if(!user){location.replace('login.html');return false;}const {data,error}=await supabase.from('profiles').select('role').eq('id',user.id).single();if(error||data?.role!=='admin'){location.replace('login.html');return false;}return true;}
 function resetForm(){['customerId','name','code','email','password','phone','state','address'].forEach(id=>$(id).value='');$('country').value='العراق';$('formTitle').textContent='إضافة عميل';$('cancelBtn').style.display='none';}
