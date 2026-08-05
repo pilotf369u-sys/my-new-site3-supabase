@@ -1,4 +1,4 @@
-import { supabase } from './supabase-client.js?v=20260805-26';
+import { supabase } from './supabase-client.js?v=20260805-27';
 
 export async function removeLegacyServiceWorkers() {
   if ('serviceWorker' in navigator) {
@@ -81,7 +81,7 @@ export async function syncLegacySession() {
 
 export function getDashboardPath(profile) {
   const paths = {
-    admin: 'admin.html?v=20260805-26',
+    admin: 'admin.html?v=20260805-27',
     employee: 'employee-dashboard.html',
     delivery: 'delivery-dashboard.html',
     branch: 'branch-dashboard.html',
