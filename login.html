@@ -26,14 +26,7 @@
 
   <form id="loginForm" novalidate>
     <label for="identifier">البريد الإلكتروني أو رقم الهاتف</label>
-    <input
-      type="text"
-      id="identifier"
-      autocomplete="username"
-      inputmode="text"
-      placeholder="example@email.com أو 5378240430"
-      required
-    >
+    <input type="text" id="identifier" autocomplete="username" placeholder="example@email.com أو 5378240430" required>
 
     <div id="countryWrap" class="country-wrap visible">
       <label for="countryCode">رمز الدولة</label>
@@ -57,13 +50,8 @@
 </div>
 
 <script type="module">
-  import { supabase } from './js/supabase-client.js?v=20260805-9';
-  import {
-    signInWithEmail,
-    signInWithPhone,
-    syncLegacySession,
-    getDashboardPath,
-  } from './js/auth-service.js?v=20260805-9';
+  import { supabase } from './js/supabase-client.js?v=20260805-10';
+  import { signInWithEmail, signInWithPhone, syncLegacySession, getDashboardPath } from './js/auth-service.js?v=20260805-10';
 
   const form = document.getElementById('loginForm');
   const identifierInput = document.getElementById('identifier');
@@ -73,9 +61,7 @@
   const errorBox = document.getElementById('loginError');
   const button = document.getElementById('loginBtn');
 
-  function isEmail(value) {
-    return String(value).includes('@');
-  }
+  const isEmail = value => String(value).includes('@');
 
   function normalizePhone(code, value) {
     const digits = String(value || '').replace(/\D/g, '').replace(/^0+/, '');
@@ -110,11 +96,12 @@
     });
 
     if (error) {
+      console.error('[Customer Login RPC]', error);
       const text = `${error.message || ''} ${error.details || ''}`.toLowerCase();
       if (text.includes('could not find the function') || text.includes('schema cache')) {
-        throw new Error('نظام دخول العملاء غير مفعّل في قاعدة البيانات بعد. نفّذ ملف CUSTOMER_PASSWORD_LOGIN.sql في Supabase ثم أعد المحاولة.');
+        throw new Error('خدمة دخول العملاء لم تُحمّل بعد. انتظر قليلاً ثم حدّث الصفحة.');
       }
-      throw error;
+      throw new Error(error.message || 'تعذر الاتصال بخدمة دخول العملاء.');
     }
 
     if (!data?.ok) return false;
@@ -153,16 +140,15 @@
 
       const phone = normalizePhone(countryCode.value, identifier);
 
-      const customerLoggedIn = await tryCustomerLogin(phone, password);
-      if (customerLoggedIn) return;
+      if (await tryCustomerLogin(phone, password)) return;
 
       try {
         clearOldSessions();
         await signInWithPhone(phone, password);
         await finishStaffLogin();
       } catch (staffError) {
-        console.error('[Unified Login] Customer and staff login failed:', staffError);
-        throw new Error('رقم الهاتف أو كلمة المرور غير صحيحة.');
+        console.error('[Unified Login] Phone login failed:', staffError);
+        throw new Error('رقم الهاتف أو كلمة المرور غير صحيحة. إذا أنشأ الأدمن الحساب سابقاً، يجب فتح العميل من إدارة العملاء وتعيين كلمة المرور مرة واحدة.');
       }
     } catch (error) {
       console.error('[Unified Login]', error);
