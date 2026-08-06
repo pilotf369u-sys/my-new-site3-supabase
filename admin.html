@@ -11,19 +11,16 @@
 <div id="loading">جاري تحميل لوحة الإدارة الأصلية وربطها بـ Supabase...</div>
 <script type="module">
   import './js/admin.js?v=20260806-full-cloud-3';
-  import './js/admin-customers-fix.js?v=20260806-customers-fix-1';
+  import './js/admin-customers-fix.js?v=20260806-customers-fix-2';
 
   async function mountOriginalAdmin() {
     const response = await fetch('admin-dashboard-legacy.html?v=20260806-full-cloud-3', { cache: 'no-store' });
     if (!response.ok) throw new Error('تعذر تحميل هيكل لوحة الإدارة الأصلية.');
     const html = await response.text();
     const parsed = new DOMParser().parseFromString(html, 'text/html');
-
-    // Remove all legacy scripts and inline startup hooks so no localStorage code runs.
     parsed.querySelectorAll('script').forEach(script => script.remove());
     parsed.body.removeAttribute('onload');
     parsed.querySelectorAll('[onload]').forEach(node => node.removeAttribute('onload'));
-
     document.head.innerHTML = parsed.head.innerHTML;
     document.body.innerHTML = parsed.body.innerHTML;
     document.body.dataset.adminTemplateReady = 'true';
