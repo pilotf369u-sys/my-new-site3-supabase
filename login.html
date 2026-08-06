@@ -8,29 +8,25 @@
 <body>
 <div class="box"><h2>تسجيل الدخول</h2><form id="loginForm" novalidate><label for="identifier">البريد الإلكتروني أو رقم الهاتف الكامل</label><input type="text" id="identifier" autocomplete="username" placeholder="example@email.com أو 9012345678" required><label for="password">كلمة المرور</label><input type="password" id="password" autocomplete="current-password" required><button type="submit" id="loginBtn">تسجيل الدخول</button><div id="loginError" class="form-error" aria-live="polite"></div></form><p class="hint">اكتب رقم الهاتف كاملاً مع مفتاح الدولة، بالأرقام فقط ومن دون علامة +.</p><p style="text-align:center"><a href="index.html">العودة للرئيسية</a></p></div>
 <script type="module">
-import { supabase } from './js/supabase-client.js?v=20260806-auth-session-2';
-import { signInWithEmail, signInWithPhone, syncLegacySession, getDashboardPath, removeLegacyServiceWorkers } from './js/auth-service.js?v=20260806-auth-session-2';
+import { supabase } from './js/supabase-client.js?v=20260806-customer-token-3';
+import { signInWithEmail, signInWithPhone, syncLegacySession, getDashboardPath, removeLegacyServiceWorkers } from './js/auth-service.js?v=20260806-customer-token-3';
 await removeLegacyServiceWorkers();
 const form=document.getElementById('loginForm'),identifierInput=document.getElementById('identifier'),passwordInput=document.getElementById('password'),errorBox=document.getElementById('loginError'),button=document.getElementById('loginBtn');
 const digits=value=>String(value||'').replace(/\D/g,'');const isEmail=value=>String(value||'').includes('@');
-function clearOldSessions(){['customerPortalToken','loggedInUser','viewedBy','isAdminViewing','isEmployeeViewing','adminCustomersList'].forEach(key=>localStorage.removeItem(key));sessionStorage.removeItem('selectedCustomerPhone');sessionStorage.removeItem('openedByAdmin');}
+function clearOldSessions(){['customerPortalToken','loggedInUser','viewedBy','isAdminViewing','isEmployeeViewing','adminCustomersList'].forEach(key=>localStorage.removeItem(key));sessionStorage.removeItem('customerPortalToken');sessionStorage.removeItem('selectedCustomerPhone');sessionStorage.removeItem('openedByAdmin');}
+function saveCustomerToken(token){const value=String(token||'');if(!value)throw new Error('لم يرجع الخادم رمز جلسة العميل.');localStorage.setItem('customerPortalToken',value);sessionStorage.setItem('customerPortalToken',value);}
 async function verifyAuthSession(){const {data,error}=await supabase.auth.getSession();if(error)throw new Error(error.message);if(!data?.session)throw new Error('تعذر تثبيت جلسة Supabase Auth.');return data.session;}
 async function finishStaffLogin(){const profile=await syncLegacySession();if(!profile)throw new Error('تعذر العثور على صلاحية الحساب.');await verifyAuthSession();location.replace(getDashboardPath(profile));}
 async function signInCustomer(phone,password){
   const candidates=[...new Set([phone,phone.replace(/^0+/, '')].filter(Boolean))];
   for(const candidate of candidates){
-    const authAttempt=await supabase.auth.signInWithPassword({phone:`+${candidate}`,password});
-    if(!authAttempt.error&&authAttempt.data?.session){
-      clearOldSessions();
-      await verifyAuthSession();
-      location.replace('dashboard.html');
-      return true;
-    }
-  }
-  for(const candidate of candidates){
     const {data,error}=await supabase.rpc('customer_password_login_v2',{p_phone:candidate,p_password:password});
     if(error)throw new Error(error.message||'تعذر الاتصال بخدمة دخول العملاء.');
-    if(data?.ok){clearOldSessions();localStorage.setItem('customerPortalToken',String(data.token));location.replace('dashboard.html');return true;}
+    if(data?.ok){clearOldSessions();saveCustomerToken(data.token);location.replace('dashboard.html?v=20260806-customer-token-3');return true;}
+  }
+  for(const candidate of candidates){
+    const authAttempt=await supabase.auth.signInWithPassword({phone:`+${candidate}`,password});
+    if(!authAttempt.error&&authAttempt.data?.session){clearOldSessions();await verifyAuthSession();location.replace('dashboard.html?v=20260806-customer-token-3');return true;}
   }
   return false;
 }
