@@ -7,12 +7,31 @@ const esc = value => clean(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
 let customers = [];
 
 async function fetchCustomers() {
-  const { data, error } = await supabase
+  // Use a SECURITY DEFINER RPC so the admin list is not hidden by table RLS.
+  const rpcResult = await supabase.rpc('admin_list_customers_v2');
+  if (!rpcResult.error) {
+    customers = Array.isArray(rpcResult.data) ? rpcResult.data : [];
+    console.info('[Admin customers] Loaded through RPC:', customers.length);
+    return customers;
+  }
+
+  // Temporary fallback for projects where the RPC migration has not been run yet.
+  console.warn('[Admin customers] RPC unavailable, trying direct SELECT:', rpcResult.error);
+  const directResult = await supabase
     .from('customers')
     .select('*')
     .order('created_at', { ascending: false });
-  if (error) throw new Error(error.message || 'تعذر تحميل العملاء.');
-  customers = data || [];
+
+  if (directResult.error) {
+    throw new Error(
+      rpcResult.error?.message?.includes('admin_list_customers_v2')
+        ? 'شغّل ملف FIX_ADMIN_CUSTOMER_LIST_RPC.sql في Supabase SQL Editor، ثم حدّث الصفحة.'
+        : (directResult.error.message || 'تعذر تحميل العملاء.')
+    );
+  }
+
+  customers = directResult.data || [];
+  console.info('[Admin customers] Loaded through direct SELECT:', customers.length);
   return customers;
 }
 
@@ -23,7 +42,11 @@ function completedOrdersCount(customer) {
 
 function renderCustomers() {
   const body = $('custTableBody');
-  if (!body) return;
+  if (!body) {
+    console.error('[Admin customers] custTableBody was not found.');
+    return;
+  }
+
   const eligibleOnly = $('customerFilterSelect')?.value === 'eligible';
   const rows = customers.filter(customer => !eligibleOnly || Number(customer.balance || 0) > 0);
 
@@ -107,7 +130,7 @@ window.saveCustomerData = async function saveCustomerData() {
 
   if (!hiddenId && existing) {
     setEditMode(existing);
-    alert('هذا الرقم مسجل مسبقاً. تم فتح بيانات العميل في وضع التعديل. عدّل الحقول المطلوبة ثم اضغط حفظ تعديلات العميل.');
+    alert('هذا الرقم مسجل مسبقاً. تم فتح بيانات العميل في وضع التعديل.');
     return;
   }
 
@@ -149,6 +172,12 @@ window.deleteCustomerCloud = async function deleteCustomerCloud(id) {
   renderCustomers();
 };
 
-window.addEventListener('admin-template-ready', () => {
-  setTimeout(() => window.loadCustomers().catch(error => alert(error.message)), 0);
-});
+function startCustomerList() {
+  window.loadCustomers().catch(error => {
+    console.error('[Admin customers]', error);
+    alert(error.message);
+  });
+}
+
+window.addEventListener('admin-template-ready', () => setTimeout(startCustomerList, 0));
+if (document.body?.dataset?.adminTemplateReady === 'true') setTimeout(startCustomerList, 0);
