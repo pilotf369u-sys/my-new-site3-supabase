@@ -27,8 +27,8 @@
   <p style="text-align:center"><a href="index.html">العودة للرئيسية</a></p>
 </div>
 <script type="module">
-import { supabase } from './js/supabase-client.js?v=20260805-26';
-import { signInWithEmail, signInWithPhone, syncLegacySession, getDashboardPath, removeLegacyServiceWorkers } from './js/auth-service.js?v=20260805-26';
+import { supabase } from './js/supabase-client.js?v=20260806-cloud';
+import { signInWithEmail, signInWithPhone, syncLegacySession, getDashboardPath, removeLegacyServiceWorkers } from './js/auth-service.js?v=20260806-cloud';
 await removeLegacyServiceWorkers();
 
 const form=document.getElementById('loginForm');
@@ -40,7 +40,7 @@ const digits=value=>String(value||'').replace(/\D/g,'');
 const isEmail=value=>String(value||'').includes('@');
 
 function clearOldSessions(){
-  ['customerPortalToken','loggedInUser','viewedBy','isAdminViewing','isEmployeeViewing'].forEach(key=>localStorage.removeItem(key));
+  ['customerPortalToken','loggedInUser','viewedBy','isAdminViewing','isEmployeeViewing','adminCustomersList'].forEach(key=>localStorage.removeItem(key));
   sessionStorage.removeItem('selectedCustomerPhone');
   sessionStorage.removeItem('openedByAdmin');
 }
@@ -55,13 +55,11 @@ async function signInCustomer(phone,password){
   const candidates=[...new Set([phone,phone.replace(/^0+/, '')].filter(Boolean))];
   for(const candidate of candidates){
     const {data,error}=await supabase.rpc('customer_password_login_v2',{p_phone:candidate,p_password:password});
-    console.info('[Customer Login v2]',{phone:candidate,ok:data?.ok,error:error?.message||null,message:data?.message||null});
     if(error) throw new Error(error.message||'تعذر الاتصال بخدمة دخول العملاء.');
     if(data?.ok){
       clearOldSessions();
-      localStorage.setItem('customerPortalToken',data.token);
-      localStorage.setItem('loggedInUser',JSON.stringify(data.customer));
-      location.replace('dashboard.html?view=customer');
+      localStorage.setItem('customerPortalToken',String(data.token));
+      location.replace('dashboard.html');
       return true;
     }
   }
@@ -83,17 +81,13 @@ form.addEventListener('submit',async event=>{
       await finishStaffLogin();
       return;
     }
-
     const phone=digits(identifier);
     if(!phone) throw new Error('أدخل رقم هاتف صحيحاً بالأرقام فقط.');
-
     if(await signInCustomer(phone,password)) return;
-
     try{
       clearOldSessions();
       await signInWithPhone(phone,password);
       await finishStaffLogin();
-      return;
     }catch(staffError){
       console.warn('[Staff phone login]',staffError);
       throw new Error('رقم الهاتف أو كلمة المرور غير صحيحة.');
