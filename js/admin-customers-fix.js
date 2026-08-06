@@ -7,50 +7,26 @@ const esc = value => clean(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
 let customers = [];
 
 async function fetchCustomers() {
-  // Use a SECURITY DEFINER RPC so the admin list is not hidden by table RLS.
-  const rpcResult = await supabase.rpc('admin_list_customers_v2');
-  if (!rpcResult.error) {
-    customers = Array.isArray(rpcResult.data) ? rpcResult.data : [];
-    console.info('[Admin customers] Loaded through RPC:', customers.length);
-    return customers;
-  }
-
-  // Temporary fallback for projects where the RPC migration has not been run yet.
-  console.warn('[Admin customers] RPC unavailable, trying direct SELECT:', rpcResult.error);
-  const directResult = await supabase
-    .from('customers')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (directResult.error) {
-    throw new Error(
-      rpcResult.error?.message?.includes('admin_list_customers_v2')
-        ? 'شغّل ملف FIX_ADMIN_CUSTOMER_LIST_RPC.sql في Supabase SQL Editor، ثم حدّث الصفحة.'
-        : (directResult.error.message || 'تعذر تحميل العملاء.')
-    );
-  }
-
-  customers = directResult.data || [];
-  console.info('[Admin customers] Loaded through direct SELECT:', customers.length);
+  const { data, error } = await supabase.from('customers').select('*');
+  if (error) throw new Error(error.message || 'تعذر تحميل العملاء من Supabase.');
+  customers = Array.isArray(data) ? data : [];
+  console.info('[Admin customers] Direct customers rows:', customers.length, customers);
   return customers;
 }
 
 function completedOrdersCount(customer) {
-  const value = customer?.payload?.completedOrders ?? customer?.payload?.completed_orders ?? 0;
-  return Number(value || 0);
+  return Number(customer?.payload?.completedOrders ?? customer?.payload?.completed_orders ?? 0);
 }
 
-function renderCustomers() {
+function renderCustomersTable(rows = customers) {
   const body = $('custTableBody');
   if (!body) {
     console.error('[Admin customers] custTableBody was not found.');
     return;
   }
 
-  const eligibleOnly = $('customerFilterSelect')?.value === 'eligible';
-  const rows = customers.filter(customer => !eligibleOnly || Number(customer.balance || 0) > 0);
-
-  body.innerHTML = rows.map(customer => {
+  const list = Array.isArray(rows) ? rows : [];
+  body.innerHTML = list.map(customer => {
     const code = customer.customer_code || customer.payload?.code || '';
     const state = customer.payload?.state || '';
     const countryRegion = [customer.country, state].filter(Boolean).join(' / ');
@@ -64,7 +40,7 @@ function renderCustomers() {
       <td>${Number(customer.balance || 0) > 0 ? 'مستحق' : 'غير مستحق'}</td>
       <td><button class="btn-green" type="button" disabled>منح المكافأة</button></td>
       <td>${Number(customer.payload?.usageCount || 0)}</td>
-      <td>${esc(customer.payload?.rewardsLog?.length ? `${customer.payload.rewardsLog.length} سجل` : 'لا يوجد')}</td>
+      <td>${customer.payload?.rewardsLog?.length ? `${customer.payload.rewardsLog.length} سجل` : 'لا يوجد'}</td>
       <td>
         <button class="btn-blue" type="button" onclick="editCustomerCloud('${customer.id}')">تعديل</button>
         <button class="btn-red" type="button" onclick="deleteCustomerCloud('${customer.id}')">حذف</button>
@@ -101,9 +77,10 @@ function setEditMode(customer) {
 }
 
 window.loadCustomers = async function loadCustomers() {
-  await fetchCustomers();
-  renderCustomers();
+  const rows = await fetchCustomers();
+  renderCustomersTable(rows);
 };
+window.renderCustomersTable = renderCustomersTable;
 
 window.editCustomerCloud = function editCustomerCloud(id) {
   const customer = customers.find(item => item.id === id);
@@ -127,10 +104,9 @@ window.saveCustomerData = async function saveCustomerData() {
   await fetchCustomers();
   const hiddenId = clean($('editCustomerId')?.value);
   const existing = customers.find(customer => digits(customer.phone) === phone);
-
   if (!hiddenId && existing) {
     setEditMode(existing);
-    alert('هذا الرقم مسجل مسبقاً. تم فتح بيانات العميل في وضع التعديل.');
+    alert('هذا الرقم مسجل مسبقاً. تم فتح بيانات العميل للتعديل.');
     return;
   }
 
@@ -155,12 +131,13 @@ window.saveCustomerData = async function saveCustomerData() {
       alert('هذا الرقم مسجل مسبقاً، وتم تحويل النموذج إلى وضع التعديل.');
       return;
     }
-    throw new Error(error.message || 'تعذر حفظ العميل.');
+    alert(error.message || 'تعذر حفظ العميل.');
+    return;
   }
 
   window.resetCustomerForm();
-  await fetchCustomers();
-  renderCustomers();
+  const rows = await fetchCustomers();
+  renderCustomersTable(rows);
   alert(hiddenId ? 'تم تحديث بيانات العميل على Supabase.' : 'تمت إضافة العميل إلى Supabase.');
 };
 
@@ -168,8 +145,8 @@ window.deleteCustomerCloud = async function deleteCustomerCloud(id) {
   if (!confirm('هل تريد حذف هذا العميل نهائياً؟')) return;
   const { error } = await supabase.from('customers').delete().eq('id', id);
   if (error) return alert(error.message || 'تعذر حذف العميل.');
-  await fetchCustomers();
-  renderCustomers();
+  const rows = await fetchCustomers();
+  renderCustomersTable(rows);
 };
 
 function startCustomerList() {
