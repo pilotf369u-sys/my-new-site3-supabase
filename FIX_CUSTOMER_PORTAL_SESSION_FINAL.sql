@@ -9,9 +9,9 @@ set search_path = ''
 as $function$
 declare
   v_customer public.customers%rowtype;
-  v_orders jsonb;
-  v_messages jsonb;
-  v_rewards jsonb;
+  v_orders jsonb := '[]'::jsonb;
+  v_messages jsonb := '[]'::jsonb;
+  v_rewards jsonb := '[]'::jsonb;
   v_token_hash text;
 begin
   if p_token is null or pg_catalog.btrim(p_token) = '' then
@@ -31,7 +31,7 @@ begin
   limit 1;
 
   if v_customer.id is null then
-    return pg_catalog.jsonb_build_object('ok', false, 'message', 'انتهت جلسة العميل أو لم تعد صالحة');
+    return pg_catalog.jsonb_build_object('ok', false, 'message', 'جلسة العميل غير موجودة أو منتهية');
   end if;
 
   select case
@@ -43,26 +43,22 @@ begin
   where o.customer_id = v_customer.id
      or public.normalize_customer_phone(o.customer_phone) = public.normalize_customer_phone(v_customer.phone);
 
-  if pg_catalog.to_regclass('public.messages') is null then
-    v_messages := '[]'::jsonb;
-  else
+  if pg_catalog.to_regclass('public.messages') is not null then
     execute $sql$
       select case
-        when count(*) = 0 then '[]'::jsonb
-        else jsonb_agg(to_jsonb(m) order by m.created_at asc)
+        when pg_catalog.count(*) = 0 then '[]'::jsonb
+        else pg_catalog.jsonb_agg(pg_catalog.to_jsonb(m) order by m.created_at asc)
       end
       from public.messages m
       where m.customer_id = $1
     $sql$ into v_messages using v_customer.id;
   end if;
 
-  if pg_catalog.to_regclass('public.rewards') is null then
-    v_rewards := '[]'::jsonb;
-  else
+  if pg_catalog.to_regclass('public.rewards') is not null then
     execute $sql$
       select case
-        when count(*) = 0 then '[]'::jsonb
-        else jsonb_agg(to_jsonb(r) order by r.created_at desc)
+        when pg_catalog.count(*) = 0 then '[]'::jsonb
+        else pg_catalog.jsonb_agg(pg_catalog.to_jsonb(r) order by r.created_at desc)
       end
       from public.rewards r
       where r.customer_id = $1
