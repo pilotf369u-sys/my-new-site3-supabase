@@ -1,1 +1,38 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate"><title>لوحة الإدارة - MeshWar</title></head><body><script>location.replace('admin-cloud.html?v=20260806-cloud');</script></body></html>
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
+  <title>لوحة الإدارة - MeshWar</title>
+  <style>html,body{margin:0;min-height:100%;background:#f4f7f6}#loading{font-family:Tahoma,sans-serif;padding:30px;text-align:center;color:#2c3e50}</style>
+</head>
+<body>
+<div id="loading">جاري تحميل لوحة الإدارة الأصلية وربطها بـ Supabase...</div>
+<script type="module">
+  import './js/admin.js?v=20260806-full-cloud-1';
+
+  async function mountOriginalAdmin() {
+    const response = await fetch('admin-dashboard-legacy.html?v=20260806-full-cloud-1', { cache: 'no-store' });
+    if (!response.ok) throw new Error('تعذر تحميل هيكل لوحة الإدارة الأصلية.');
+    const html = await response.text();
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+
+    // Remove all legacy scripts and inline startup hooks so no localStorage code runs.
+    parsed.querySelectorAll('script').forEach(script => script.remove());
+    parsed.body.removeAttribute('onload');
+    parsed.querySelectorAll('[onload]').forEach(node => node.removeAttribute('onload'));
+
+    document.head.innerHTML = parsed.head.innerHTML;
+    document.body.innerHTML = parsed.body.innerHTML;
+    document.body.dataset.adminTemplateReady = 'true';
+    window.dispatchEvent(new Event('admin-template-ready'));
+  }
+
+  mountOriginalAdmin().catch(error => {
+    console.error(error);
+    document.body.innerHTML = `<div style="font-family:Tahoma;padding:30px;color:#b42318">${error.message}</div>`;
+  });
+</script>
+</body>
+</html>
