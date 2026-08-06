@@ -10,11 +10,10 @@
 <body>
 <div id="loading">جاري تحميل لوحة الإدارة الأصلية وربطها بـ Supabase...</div>
 <script type="module">
-  import './js/admin.js?v=20260806-full-cloud-4';
-  import './js/admin-customers-fix.js?v=20260806-customers-fix-3';
+  import './js/admin.js?v=20260806-admin-render-final-1';
 
   async function mountOriginalAdmin() {
-    const response = await fetch('admin-dashboard-legacy.html?v=20260806-full-cloud-4', { cache: 'no-store' });
+    const response = await fetch('admin-dashboard-legacy.html?v=20260806-admin-render-final-1', { cache: 'no-store' });
     if (!response.ok) throw new Error('تعذر تحميل هيكل لوحة الإدارة الأصلية.');
     const html = await response.text();
     const parsed = new DOMParser().parseFromString(html, 'text/html');
