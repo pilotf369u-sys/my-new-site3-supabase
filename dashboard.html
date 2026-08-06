@@ -1,10 +1,134 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate"><title>لوحة العميل - MeshWar</title><style>body{font-family:Segoe UI,sans-serif;background:#f4f6f9;margin:0;padding:20px;color:#172033}.top,.card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 4px 14px #00000012;margin-bottom:18px}.top{display:flex;justify-content:space-between;align-items:center}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}.muted{color:#667085}.error{color:#b42318}.ok{color:#16803c}input,button,textarea,select{padding:10px;border:1px solid #ccd3df;border-radius:8px;font:inherit;box-sizing:border-box}button{background:#063b70;color:#fff;border:0;cursor:pointer}.danger{background:#b42318}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #e7eaf0;text-align:right}.message{padding:10px;border-radius:8px;background:#f7f8fa;margin:7px 0}.message.customer{background:#e7f0ff}.message.staff,.message.admin{background:#edf9f0}@media(max-width:700px){body{padding:10px}.top{align-items:flex-start;gap:10px;flex-direction:column}table{font-size:12px}}</style></head><body><header class="top"><div><h1 style="margin:0">أهلاً بك يا <span id="customerName">...</span></h1><div id="status" class="muted">جاري تحميل بياناتك من Supabase...</div></div><div><a href="index.html">العودة للرئيسية</a> <button id="logoutBtn" class="danger">تسجيل الخروج</button></div></header><div class="grid"><section class="card"><h2>بيانات الحساب</h2><p>الكود: <b id="customerCode"></b></p><p>الهاتف: <b id="customerPhone"></b></p><label>العنوان</label><div style="display:flex;gap:8px"><input id="address" style="flex:1"><button id="saveAddress">حفظ</button></div></section><section class="card"><h2>المكافآت</h2><p>إجمالي المكافآت: <b id="rewardTotal">0</b></p><div id="rewardsList"></div></section></div><section class="card"><h2>طلباتي</h2><div style="overflow:auto"><table><thead><tr><th>رقم الطلب</th><th>الحالة</th><th>السعر</th><th>التاريخ</th><th>إجراء</th></tr></thead><tbody id="ordersBody"></tbody></table></div></section><div class="grid"><section class="card"><h2>الرسائل</h2><div id="messagesList"></div><div style="display:grid;gap:8px"><select id="messageOrder"><option value="">رسالة عامة</option></select><textarea id="messageBody" placeholder="اكتب رسالتك"></textarea><button id="sendMessage">إرسال</button></div></section><section class="card"><h2>حالة الاتصال</h2><p>هذه الصفحة تقرأ العملاء والطلبات والرسائل والمكافآت من Supabase فقط.</p><button id="refreshBtn">تحديث البيانات</button></section></div><script type="module">import { supabase } from './js/supabase-client.js';
-const $=id=>document.getElementById(id);const token=localStorage.getItem('customerPortalToken');let portal=null;
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate"><title>لوحة العميل - MeshWar</title>
+<style>body{font-family:Segoe UI,sans-serif;background:#f4f6f9;margin:0;padding:20px;color:#172033}.top,.card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 4px 14px #00000012;margin-bottom:18px}.top{display:flex;justify-content:space-between;align-items:center}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}.muted{color:#667085}.error{color:#b42318}.ok{color:#16803c}input,button,textarea,select{padding:10px;border:1px solid #ccd3df;border-radius:8px;font:inherit;box-sizing:border-box}button{background:#063b70;color:#fff;border:0;cursor:pointer}.danger{background:#b42318}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #e7eaf0;text-align:right}.message{padding:10px;border-radius:8px;background:#f7f8fa;margin:7px 0}.message.customer{background:#e7f0ff}.message.staff,.message.admin{background:#edf9f0}@media(max-width:700px){body{padding:10px}.top{align-items:flex-start;gap:10px;flex-direction:column}table{font-size:12px}}</style>
+</head>
+<body>
+<header class="top"><div><h1 style="margin:0">أهلاً بك يا <span id="customerName">...</span></h1><div id="status" class="muted">جاري التحقق من جلسة Supabase...</div></div><div><a href="index.html">العودة للرئيسية</a> <button id="logoutBtn" class="danger">تسجيل الخروج</button></div></header>
+<div class="grid"><section class="card"><h2>بيانات الحساب</h2><p>الكود: <b id="customerCode"></b></p><p>الهاتف: <b id="customerPhone"></b></p><label>العنوان</label><div style="display:flex;gap:8px"><input id="address" style="flex:1"><button id="saveAddress">حفظ</button></div></section><section class="card"><h2>المكافآت</h2><p>إجمالي المكافآت: <b id="rewardTotal">0</b></p><div id="rewardsList"></div></section></div>
+<section class="card"><h2>طلباتي</h2><div style="overflow:auto"><table><thead><tr><th>رقم الطلب</th><th>الحالة</th><th>السعر</th><th>التاريخ</th><th>إجراء</th></tr></thead><tbody id="ordersBody"></tbody></table></div></section>
+<div class="grid"><section class="card"><h2>الرسائل</h2><div id="messagesList"></div><div style="display:grid;gap:8px"><select id="messageOrder"><option value="">رسالة عامة</option></select><textarea id="messageBody" placeholder="اكتب رسالتك"></textarea><button id="sendMessage">إرسال</button></div></section><section class="card"><h2>حالة الاتصال</h2><p>يتم التحقق من Supabase Auth أولاً، ثم جلسة بوابة العميل.</p><button id="refreshBtn">تحديث البيانات</button></section></div>
+<script type="module">
+import { supabase } from './js/supabase-client.js';
+const $=id=>document.getElementById(id);
+let portal=null;
+let token=localStorage.getItem('customerPortalToken');
+let authSession=null;
+let authCustomer=null;
+const digits=v=>String(v||'').replace(/\D/g,'');
 function setStatus(text,error=false){$('status').textContent=text;$('status').className=error?'error':'ok';}
-function fmt(v){return v?new Date(v).toLocaleString('ar'):'';}function price(o){return o.payload?.price||o.payload?.total||o.price||'';}
-async function load(){if(!token){location.replace('login.html');return;}setStatus('جاري تحميل بياناتك من Supabase...');const {data,error}=await supabase.rpc('customer_portal_data_v2',{p_token:token});if(error||!data?.ok){localStorage.removeItem('customerPortalToken');localStorage.removeItem('loggedInUser');setStatus(error?.message||data?.message||'انتهت الجلسة',true);setTimeout(()=>location.replace('login.html'),1200);return;}portal=data;render();setStatus('تم تحديث البيانات من Supabase.');}
-function render(){const c=portal.customer||{};$('customerName').textContent=c.name||'العميل';$('customerCode').textContent=c.customer_code||c.payload?.code||'';$('customerPhone').textContent=c.phone||'';$('address').value=c.address||'';const orders=portal.orders||[];$('ordersBody').innerHTML=orders.map(o=>`<tr><td>${o.legacy_id||o.id}</td><td>${o.status||''}</td><td>${price(o)}</td><td>${fmt(o.created_at)}</td><td><button class="danger" data-cancel="${o.id}">إلغاء</button></td></tr>`).join('')||'<tr><td colspan="5">لا توجد طلبات.</td></tr>';$('messageOrder').innerHTML='<option value="">رسالة عامة</option>'+orders.map(o=>`<option value="${o.id}">${o.legacy_id||o.id}</option>`).join('');$('messagesList').innerHTML=(portal.messages||[]).map(m=>`<div class="message ${m.sender}"><b>${m.sender==='customer'?'أنت':'الإدارة'}</b>: ${m.body}<div class="muted">${fmt(m.created_at)}</div></div>`).join('')||'<p>لا توجد رسائل.</p>';const rewards=portal.rewards||[];$('rewardTotal').textContent=rewards.reduce((s,r)=>s+Number(r.amount||0),0).toFixed(2);$('rewardsList').innerHTML=rewards.map(r=>`<p>${Number(r.amount||0).toFixed(2)} — ${r.note||''} <span class="muted">${fmt(r.created_at)}</span></p>`).join('')||'<p>لا توجد مكافآت.</p>';}
-$('saveAddress').onclick=async()=>{const {data,error}=await supabase.rpc('customer_update_address',{p_token:token,p_address:$('address').value.trim()});if(error||!data?.ok)return setStatus(error?.message||data?.message,true);await load();};
-$('sendMessage').onclick=async()=>{const body=$('messageBody').value.trim();if(!body)return;const {data,error}=await supabase.rpc('customer_send_message',{p_token:token,p_order_id:$('messageOrder').value||null,p_body:body});if(error||!data?.ok)return setStatus(error?.message||data?.message,true);$('messageBody').value='';await load();};
-$('ordersBody').onclick=async e=>{const id=e.target.dataset.cancel;if(!id||!confirm('تأكيد إلغاء الطلب؟'))return;const {data,error}=await supabase.rpc('customer_cancel_order',{p_token:token,p_order_id:id});if(error||!data?.ok)return setStatus(error?.message||data?.message,true);await load();};
-$('refreshBtn').onclick=load;$('logoutBtn').onclick=()=>{localStorage.removeItem('customerPortalToken');localStorage.removeItem('loggedInUser');location.replace('login.html');};await load();</script></body></html>
+function fmt(v){return v?new Date(v).toLocaleString('ar'):'';}
+function price(o){return o?.payload?.price||o?.payload?.total||o?.price||'';}
+
+async function findCustomerForAuthUser(user){
+  if(!user) return null;
+  let result=await supabase.from('customers').select('*').eq('auth_user_id',user.id).maybeSingle();
+  if(!result.error&&result.data) return result.data;
+  const phone=digits(user.phone||user.user_metadata?.phone||'');
+  if(!phone) return null;
+  result=await supabase.from('customers').select('*').eq('phone',phone).maybeSingle();
+  if(!result.error&&result.data) return result.data;
+  const all=await supabase.from('customers').select('*');
+  if(all.error) return null;
+  return (all.data||[]).find(c=>digits(c.phone)===phone)||null;
+}
+
+async function loadAuthCustomerData(customer){
+  const [ordersResult,messagesResult,rewardsResult]=await Promise.all([
+    supabase.from('orders').select('*').eq('customer_id',customer.id).order('created_at',{ascending:false}),
+    supabase.from('messages').select('*').eq('customer_id',customer.id).order('created_at',{ascending:true}),
+    supabase.from('rewards').select('*').eq('customer_id',customer.id).order('created_at',{ascending:false})
+  ]);
+  portal={customer,orders:ordersResult.data||[],messages:messagesResult.data||[],rewards:rewardsResult.data||[]};
+}
+
+async function load(){
+  setStatus('جاري التحقق من جلسة Supabase Auth...');
+  const sessionResult=await supabase.auth.getSession();
+  authSession=sessionResult.data?.session||null;
+  if(authSession?.user){
+    authCustomer=await findCustomerForAuthUser(authSession.user);
+    if(authCustomer){
+      await loadAuthCustomerData(authCustomer);
+      render();
+      setStatus('تم تحميل الحساب عبر Supabase Auth.');
+      return;
+    }
+  }
+
+  token=localStorage.getItem('customerPortalToken');
+  if(token){
+    setStatus('جاري تحميل جلسة بوابة العميل...');
+    const {data,error}=await supabase.rpc('customer_portal_data_v2',{p_token:token});
+    if(!error&&data?.ok){
+      portal=data;
+      render();
+      setStatus('تم تحميل الحساب عبر جلسة العميل السحابية.');
+      return;
+    }
+    console.warn('[Customer portal session]',error||data);
+  }
+
+  setStatus('لا توجد جلسة دخول صالحة.',true);
+  setTimeout(()=>location.replace('login.html'),1400);
+}
+
+function render(){
+  const c=portal?.customer||{};
+  $('customerName').textContent=c.name||c.full_name||'العميل';
+  $('customerCode').textContent=c.customer_code||c.payload?.code||'';
+  $('customerPhone').textContent=c.phone||'';
+  $('address').value=c.address||'';
+  const orders=portal?.orders||[];
+  $('ordersBody').innerHTML=orders.map(o=>`<tr><td>${o.legacy_id||o.id}</td><td>${o.status||''}</td><td>${price(o)}</td><td>${fmt(o.created_at)}</td><td><button class="danger" data-cancel="${o.id}">إلغاء</button></td></tr>`).join('')||'<tr><td colspan="5">لا توجد طلبات.</td></tr>';
+  $('messageOrder').innerHTML='<option value="">رسالة عامة</option>'+orders.map(o=>`<option value="${o.id}">${o.legacy_id||o.id}</option>`).join('');
+  $('messagesList').innerHTML=(portal?.messages||[]).map(m=>`<div class="message ${m.sender||'customer'}"><b>${m.sender==='customer'?'أنت':'الإدارة'}</b>: ${m.body||''}<div class="muted">${fmt(m.created_at)}</div></div>`).join('')||'<p>لا توجد رسائل.</p>';
+  const rewards=portal?.rewards||[];
+  $('rewardTotal').textContent=rewards.reduce((s,r)=>s+Number(r.amount||0),0).toFixed(2);
+  $('rewardsList').innerHTML=rewards.map(r=>`<p>${Number(r.amount||0).toFixed(2)} — ${r.note||''} <span class="muted">${fmt(r.created_at)}</span></p>`).join('')||'<p>لا توجد مكافآت.</p>';
+}
+
+$('saveAddress').onclick=async()=>{
+  const address=$('address').value.trim();
+  if(authCustomer){
+    const {error}=await supabase.from('customers').update({address,updated_at:new Date().toISOString()}).eq('id',authCustomer.id);
+    if(error)return setStatus(error.message,true);
+    await load();return;
+  }
+  const {data,error}=await supabase.rpc('customer_update_address',{p_token:token,p_address:address});
+  if(error||!data?.ok)return setStatus(error?.message||data?.message,true);
+  await load();
+};
+$('sendMessage').onclick=async()=>{
+  const body=$('messageBody').value.trim();if(!body)return;
+  if(authCustomer){
+    const {error}=await supabase.from('messages').insert({customer_id:authCustomer.id,order_id:$('messageOrder').value||null,sender:'customer',body});
+    if(error)return setStatus(error.message,true);
+    $('messageBody').value='';await load();return;
+  }
+  const {data,error}=await supabase.rpc('customer_send_message',{p_token:token,p_order_id:$('messageOrder').value||null,p_body:body});
+  if(error||!data?.ok)return setStatus(error?.message||data?.message,true);
+  $('messageBody').value='';await load();
+};
+$('ordersBody').onclick=async e=>{
+  const id=e.target.dataset.cancel;if(!id||!confirm('تأكيد إلغاء الطلب؟'))return;
+  if(authCustomer){
+    const {error}=await supabase.from('orders').update({status:'cancelled',updated_at:new Date().toISOString()}).eq('id',id).eq('customer_id',authCustomer.id);
+    if(error)return setStatus(error.message,true);
+    await load();return;
+  }
+  const {data,error}=await supabase.rpc('customer_cancel_order',{p_token:token,p_order_id:id});
+  if(error||!data?.ok)return setStatus(error?.message||data?.message,true);
+  await load();
+};
+$('refreshBtn').onclick=load;
+$('logoutBtn').onclick=async()=>{
+  localStorage.removeItem('customerPortalToken');
+  if(authSession) await supabase.auth.signOut();
+  location.replace('login.html');
+};
+await load();
+</script>
+</body>
+</html>
