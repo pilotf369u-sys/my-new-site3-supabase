@@ -5,12 +5,26 @@ const $ = id => document.getElementById(id);
 const text = value => String(value ?? '').trim();
 const nullable = value => text(value) || null;
 const esc = value => text(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const notify = message => { console.info('[Admin]', message); };
 
 async function query(promise, label) {
   const { data, error } = await promise;
-  if (error) { console.error(`[Admin:${label}]`, error); throw new Error(error.message || `فشلت عملية ${label}`); }
+  if (error) {
+    console.error(`[Admin:${label}]`, error);
+    throw new Error(error.message || `فشلت عملية ${label}`);
+  }
   return data ?? [];
+}
+
+async function optionalQuery(promise, label, missingTableName) {
+  const { data, error } = await promise;
+  if (!error) return data ?? [];
+  const missing = error.code === 'PGRST205' || String(error.message || '').includes(`public.${missingTableName}`);
+  if (missing) {
+    console.warn(`[Admin:${label}] optional table is not installed yet: ${missingTableName}`);
+    return [];
+  }
+  console.error(`[Admin:${label}]`, error);
+  throw new Error(error.message || `فشلت عملية ${label}`);
 }
 
 window.showSection = function showSection(id) {
@@ -27,7 +41,7 @@ async function loadAll() {
     query(supabase.from('currencies').select('*').order('name'), 'تحميل العملات'),
     query(supabase.from('stores').select('*').order('created_at', { ascending: false }), 'تحميل المتاجر'),
     query(supabase.from('app_settings').select('*'), 'تحميل الإعدادات'),
-    query(supabase.from('content_blocks').select('*').order('key'), 'تحميل المحتوى'),
+    optionalQuery(supabase.from('content_blocks').select('*').order('key'), 'تحميل المحتوى', 'content_blocks'),
   ]);
   Object.assign(state, { customers, orders, staff, branches, currencies, stores, content });
   state.settings = Object.fromEntries(settings.map(row => [row.key, row.value]));
@@ -44,7 +58,7 @@ window.loadCustomers = function loadCustomers() {
   if (!body) return;
   const eligibleOnly = $('customerFilterSelect')?.value === 'eligible';
   const rows = state.customers.filter(c => !eligibleOnly || Number(c.balance || 0) > 0);
-  body.innerHTML = rows.map((c, index) => `<tr>
+  body.innerHTML = rows.map(c => `<tr>
     <td>${esc(c.customer_code || c.payload?.code || '')}</td><td>${esc(c.name)}</td><td>${esc(c.phone)}</td>
     <td>${esc(c.country)}</td><td>${esc(c.address)}</td><td>${esc(c.status || 'active')}</td>
     <td><button class="btn-blue" onclick="editCustomerCloud('${c.id}')">تعديل</button> <button class="btn-red" onclick="deleteCustomerCloud('${c.id}')">حذف</button></td>
@@ -55,14 +69,29 @@ window.saveCustomerData = async function saveCustomerData() {
   const id = nullable($('editCustomerId')?.value || $('editCustomerIndex')?.dataset?.customerId);
   const payload = {
     p_customer_id: id,
-    p_name: text($('custName')?.value), p_phone: text($('custPhone')?.value),
-    p_password: text($('custPass')?.value), p_customer_code: text($('custCode')?.value),
-    p_email: nullable($('custEmail')?.value), p_country: nullable($('custCountry')?.value),
-    p_address: nullable($('custAddress')?.value), p_state: nullable($('custState')?.value),
+    p_name: text($('custName')?.value),
+    p_phone: text($('custPhone')?.value),
+    p_password: text($('custPass')?.value),
+    p_customer_code: text($('custCode')?.value),
+    p_email: nullable($('custEmail')?.value),
+    p_country: nullable($('custCountry')?.value),
+    p_address: nullable($('custAddress')?.value),
+    p_state: nullable($('custState')?.value),
   };
   if (!payload.p_name || !payload.p_phone) return alert('الاسم والهاتف مطلوبان.');
-  await query(supabase.rpc('admin_upsert_customer_account_v2', payload), 'حفظ العميل');
-  resetCustomerForm(); await loadAll(); alert('تم حفظ العميل على Supabase.');
+  try {
+    await query(supabase.rpc('admin_upsert_customer_account_v2', payload), 'حفظ العميل');
+    resetCustomerForm();
+    await loadAll();
+    alert('تم حفظ العميل على Supabase.');
+  } catch (error) {
+    const message = String(error?.message || error);
+    if (message.includes('pg_catalog.coalesce')) {
+      alert('دالة حفظ العميل في Supabase ما زالت بنسخة قديمة. شغّل ملف FIX_ADMIN_CUSTOMER_RPC_FINAL.sql مرة واحدة في SQL Editor ثم أعد المحاولة.');
+      return;
+    }
+    alert(message);
+  }
 };
 
 window.editCustomerCloud = function editCustomerCloud(id) {
