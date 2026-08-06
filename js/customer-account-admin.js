@@ -13,6 +13,11 @@
     return `CUS-${randomPart}${timePart}`;
   }
   function setValue(id, value) { const element = document.getElementById(id); if (element) element.value = value ?? ''; }
+  function explicitText(value) { return String(value ?? '').trim(); }
+  function nullableText(value) {
+    const text = explicitText(value);
+    return text === '' ? null : text;
+  }
   function refreshCustomerViews() {
     if (typeof window.loadCustomers === 'function') window.loadCustomers();
     if (typeof window.loadAdminOrders === 'function') window.loadAdminOrders();
@@ -69,43 +74,54 @@
         window.saveCustomerData = async function saveCustomerData() {
           const client = window.cloudDb?.client;
           if (!client) return alert('تعذر الاتصال بقاعدة البيانات. أعد تحميل الصفحة.');
-          const name = document.getElementById('custName')?.value.trim() || '';
-          const inputCode = document.getElementById('custCode')?.value.trim() || '';
-          const email = document.getElementById('custEmail')?.value.trim() || '';
-          const password = document.getElementById('custPass')?.value || '';
-          const country = document.getElementById('custCountry')?.value || '';
-          const phone = document.getElementById('custPhone')?.value.trim() || '';
-          const state = document.getElementById('custState')?.value.trim() || '';
-          const address = document.getElementById('custAddress')?.value.trim() || '';
-          const editIndex = Number.parseInt(document.getElementById('editCustomerIndex')?.value || '-1', 10);
+
+          const customerData = {
+            name: explicitText(document.getElementById('custName')?.value),
+            code: explicitText(document.getElementById('custCode')?.value),
+            email: nullableText(document.getElementById('custEmail')?.value),
+            password: explicitText(document.getElementById('custPass')?.value),
+            country: explicitText(document.getElementById('custCountry')?.value),
+            phone: explicitText(document.getElementById('custPhone')?.value),
+            state: nullableText(document.getElementById('custState')?.value),
+            address: explicitText(document.getElementById('custAddress')?.value),
+          };
+
+          const editIndex = Number.parseInt(explicitText(document.getElementById('editCustomerIndex')?.value) || '-1', 10);
           const existing = getExistingCustomer(editIndex);
           const databaseId = getDatabaseId(existing);
-          if (!name || !country || !phone || !address) return alert('الرجاء إدخال الاسم والدولة والهاتف والعنوان.');
-          if (!existing && password.length < 4) return alert('كلمة مرور العميل يجب أن تكون 4 أحرف أو أرقام على الأقل.');
-          if (existing && password && password.length < 4) return alert('كلمة المرور الجديدة للعميل يجب أن تكون 4 أحرف أو أرقام على الأقل.');
+
+          if (!customerData.name || !customerData.country || !customerData.phone || !customerData.address) {
+            return alert('الرجاء إدخال الاسم والدولة والهاتف والعنوان.');
+          }
+          if (!existing && customerData.password.length < 4) return alert('كلمة مرور العميل يجب أن تكون 4 أحرف أو أرقام على الأقل.');
+          if (existing && customerData.password && customerData.password.length < 4) return alert('كلمة المرور الجديدة للعميل يجب أن تكون 4 أحرف أو أرقام على الأقل.');
           if (existing && !databaseId) return alert('تعذر تحديد سجل العميل في Supabase. أعد تحميل الصفحة ثم حاول مجدداً.');
-          const finalCode = inputCode || existing?.customer_code || existing?.code || existing?.payload?.code || makeCustomerCode();
+
+          const finalCode = customerData.code || explicitText(existing?.customer_code || existing?.code || existing?.payload?.code) || makeCustomerCode();
           setValue('custCode', finalCode);
+
+          const rpcParams = {
+            p_customer_id: databaseId ? String(databaseId) : null,
+            p_name: customerData.name,
+            p_phone: customerData.phone,
+            p_password: customerData.password,
+            p_customer_code: String(finalCode),
+            p_email: customerData.email,
+            p_country: customerData.country || null,
+            p_address: customerData.address || null,
+            p_state: customerData.state,
+          };
+
           const button = document.getElementById('saveCustomerBtn');
           const oldText = button?.textContent || 'حفظ وإضافة العميل';
           if (button) { button.disabled = true; button.textContent = 'جاري الحفظ...'; }
           try {
-            const { data, error } = await client.rpc('admin_upsert_customer_account_v2', {
-              p_customer_id: databaseId,
-              p_name: name,
-              p_phone: phone,
-              p_password: password,
-              p_customer_code: finalCode,
-              p_email: email || null,
-              p_country: country || null,
-              p_address: address || null,
-              p_state: state || null,
-            });
+            const { data, error } = await client.rpc('admin_upsert_customer_account_v2', rpcParams);
             if (error) throw error;
             await window.cloudDb.reload();
             if (typeof window.resetCustomerForm === 'function') window.resetCustomerForm();
             refreshCustomerViews();
-            alert(existing ? (password ? 'تم تحديث بيانات العميل وتعيين كلمة المرور الجديدة بنجاح.' : 'تم تحديث بيانات العميل بنجاح دون تغيير كلمة المرور.') : 'تم إنشاء حساب العميل وكلمة المرور بنجاح.');
+            alert(existing ? (customerData.password ? 'تم تحديث بيانات العميل وتعيين كلمة المرور الجديدة بنجاح.' : 'تم تحديث بيانات العميل بنجاح دون تغيير كلمة المرور.') : 'تم إنشاء حساب العميل وكلمة المرور بنجاح.');
             console.info('[Customer Accounts v2] Saved customer UUID:', data);
           } catch (error) {
             console.error('[Customer Accounts v2] Save failed:', error);
