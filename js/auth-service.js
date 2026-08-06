@@ -1,4 +1,6 @@
-import { supabase } from './supabase-client.js?v=20260805-27';
+import { supabase } from './supabase-client.js?v=20260806-cloud';
+
+const CUSTOMER_TOKEN_KEY = 'customerPortalToken';
 
 export async function removeLegacyServiceWorkers() {
   if ('serviceWorker' in navigator) {
@@ -59,29 +61,26 @@ export async function getCurrentProfile() {
   return data;
 }
 
-export function saveLegacySession(profile) {
-  const session = {
-    id: profile.id,
-    name: profile.full_name || '', username: profile.full_name || '',
-    phone: profile.phone || '', email: profile.email || '',
-    country: profile.country || 'العراق', address: profile.address || '',
-    role: profile.role || 'customer',
-  };
-  localStorage.setItem('loggedInUser', JSON.stringify(session));
-  if (session.role === 'branch') localStorage.setItem('loggedBranchName', session.name);
-  else localStorage.removeItem('loggedBranchName');
-  return session;
+export function getCustomerPortalToken() {
+  return localStorage.getItem(CUSTOMER_TOKEN_KEY) || '';
+}
+
+export async function getCustomerPortalData() {
+  const token = getCustomerPortalToken();
+  if (!token) return null;
+  const { data, error } = await supabase.rpc('customer_portal_data_v2', { p_token: token });
+  if (error) throw new Error(error.message || 'تعذر تحميل بيانات العميل.');
+  if (!data?.ok) return null;
+  return data;
 }
 
 export async function syncLegacySession() {
-  const profile = await getCurrentProfile();
-  if (profile) saveLegacySession(profile);
-  return profile;
+  return getCurrentProfile();
 }
 
 export function getDashboardPath(profile) {
   const paths = {
-    admin: 'admin.html?v=20260805-27',
+    admin: 'admin.html?v=20260806-cloud',
     employee: 'employee-dashboard.html',
     delivery: 'delivery-dashboard.html',
     branch: 'branch-dashboard.html',
@@ -93,6 +92,6 @@ export function getDashboardPath(profile) {
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw new Error(error.message);
-  ['loggedInUser','loggedBranchName','adminImpersonatingCustomer','viewedBy','isEmployeeViewing'].forEach(key => localStorage.removeItem(key));
+  localStorage.removeItem(CUSTOMER_TOKEN_KEY);
   window.location.href = 'login.html';
 }
