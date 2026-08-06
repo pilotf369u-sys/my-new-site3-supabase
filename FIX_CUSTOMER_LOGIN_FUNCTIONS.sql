@@ -24,7 +24,7 @@ as $$
 declare
   v_id uuid;
   v_phone text := public.normalize_customer_phone(p_phone);
-  v_code text := nullif(pg_catalog.btrim(pg_catalog.coalesce(p_customer_code, '')), '');
+  v_code text := nullif(pg_catalog.btrim(coalesce(p_customer_code, '')), '');
   v_salt text;
   v_password_hash text;
 begin
@@ -32,11 +32,11 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  if v_phone = '' or pg_catalog.btrim(pg_catalog.coalesce(p_name, '')) = '' then
+  if v_phone = '' or pg_catalog.btrim(coalesce(p_name, '')) = '' then
     raise exception 'Name and phone are required';
   end if;
 
-  if p_customer_id is null and pg_catalog.length(pg_catalog.coalesce(p_password, '')) < 4 then
+  if p_customer_id is null and pg_catalog.length(coalesce(p_password, '')) < 4 then
     raise exception 'Password must contain at least 4 characters';
   end if;
 
@@ -50,12 +50,12 @@ begin
     ));
   end if;
 
-  if pg_catalog.length(pg_catalog.coalesce(p_password, '')) >= 4 then
+  if pg_catalog.length(coalesce(p_password, '')) >= 4 then
     v_salt := pg_catalog.md5(
       pg_catalog.random()::text ||
       pg_catalog.clock_timestamp()::text ||
       v_phone ||
-      pg_catalog.coalesce(p_customer_id::text, '')
+      coalesce(p_customer_id::text, '')
     );
     v_password_hash := 'sha256$' || v_salt || '$' ||
       pg_catalog.encode(extensions.digest(v_salt || p_password, 'sha256'), 'hex');
@@ -68,31 +68,31 @@ begin
     ) values (
       v_phone,
       pg_catalog.btrim(p_name),
-      nullif(pg_catalog.btrim(pg_catalog.coalesce(p_email, '')), ''),
-      nullif(pg_catalog.btrim(pg_catalog.coalesce(p_country, '')), ''),
-      nullif(pg_catalog.btrim(pg_catalog.coalesce(p_address, '')), ''),
+      nullif(pg_catalog.btrim(coalesce(p_email, '')), ''),
+      nullif(pg_catalog.btrim(coalesce(p_country, '')), ''),
+      nullif(pg_catalog.btrim(coalesce(p_address, '')), ''),
       'active', 0, v_code, v_password_hash,
       pg_catalog.jsonb_strip_nulls(pg_catalog.jsonb_build_object(
         'code', v_code,
-        'state', nullif(pg_catalog.btrim(pg_catalog.coalesce(p_state, '')), '')
+        'state', nullif(pg_catalog.btrim(coalesce(p_state, '')), '')
       ))
     ) returning id into v_id;
   else
     update public.customers
     set phone = v_phone,
         name = pg_catalog.btrim(p_name),
-        email = nullif(pg_catalog.btrim(pg_catalog.coalesce(p_email, '')), ''),
-        country = nullif(pg_catalog.btrim(pg_catalog.coalesce(p_country, '')), ''),
-        address = nullif(pg_catalog.btrim(pg_catalog.coalesce(p_address, '')), ''),
+        email = nullif(pg_catalog.btrim(coalesce(p_email, '')), ''),
+        country = nullif(pg_catalog.btrim(coalesce(p_country, '')), ''),
+        address = nullif(pg_catalog.btrim(coalesce(p_address, '')), ''),
         customer_code = v_code,
         password_hash = case
           when v_password_hash is not null then v_password_hash
           else password_hash
         end,
-        payload = pg_catalog.coalesce(payload, '{}'::jsonb) ||
+        payload = coalesce(payload, '{}'::jsonb) ||
           pg_catalog.jsonb_strip_nulls(pg_catalog.jsonb_build_object(
             'code', v_code,
-            'state', nullif(pg_catalog.btrim(pg_catalog.coalesce(p_state, '')), '')
+            'state', nullif(pg_catalog.btrim(coalesce(p_state, '')), '')
           )),
         updated_at = pg_catalog.now()
     where id = p_customer_id
@@ -164,7 +164,7 @@ begin
       'id', v_customer.id,
       'name', v_customer.name,
       'phone', v_customer.phone,
-      'code', pg_catalog.coalesce(v_customer.customer_code, v_customer.payload ->> 'code'),
+      'code', coalesce(v_customer.customer_code, v_customer.payload ->> 'code'),
       'country', v_customer.country,
       'address', v_customer.address,
       'role', 'customer'
@@ -198,7 +198,7 @@ begin
     return pg_catalog.jsonb_build_object('ok', false, 'message', 'انتهت جلسة العميل');
   end if;
 
-  select pg_catalog.coalesce(
+  select coalesce(
     pg_catalog.jsonb_agg(pg_catalog.to_jsonb(o) order by o.created_at desc),
     '[]'::jsonb
   ) into v_orders
