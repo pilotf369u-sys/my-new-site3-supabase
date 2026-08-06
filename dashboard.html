@@ -2,155 +2,37 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate"><title>لوحة العميل - MeshWar</title>
-<style>body{font-family:Segoe UI,sans-serif;background:#f4f6f9;margin:0;padding:20px;color:#172033}.top,.card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 4px 14px #00000012;margin-bottom:18px}.top{display:flex;justify-content:space-between;align-items:center}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}.muted{color:#667085}.error{color:#b42318}.ok{color:#16803c}.warning{color:#9a6700}input,button,textarea,select{padding:10px;border:1px solid #ccd3df;border-radius:8px;font:inherit;box-sizing:border-box}button{background:#063b70;color:#fff;border:0;cursor:pointer}.danger{background:#b42318}.secondary{background:#667085}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #e7eaf0;text-align:right}.message{padding:10px;border-radius:8px;background:#f7f8fa;margin:7px 0}.message.customer{background:#e7f0ff}.message.staff,.message.admin{background:#edf9f0}@media(max-width:700px){body{padding:10px}.top{align-items:flex-start;gap:10px;flex-direction:column}table{font-size:12px}}</style>
+<style>body{font-family:Segoe UI,Tahoma,sans-serif;background:#f4f6f9;margin:0;padding:20px;color:#172033}.top,.card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 4px 14px #00000012;margin-bottom:18px}.top{display:flex;justify-content:space-between;align-items:center}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}.muted{color:#667085}.error{color:#b42318}.ok{color:#16803c}.warning{color:#9a6700}input,button,textarea,select{padding:10px;border:1px solid #ccd3df;border-radius:8px;font:inherit;box-sizing:border-box}button{background:#063b70;color:#fff;border:0;cursor:pointer}.danger{background:#b42318}.secondary{background:#667085}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #e7eaf0;text-align:right}.message,.notification{padding:10px;border-radius:8px;background:#f7f8fa;margin:7px 0}.message.customer{background:#e7f0ff}.message.staff,.message.admin{background:#edf9f0}.progress{height:14px;background:#e4e7ec;border-radius:999px;overflow:hidden}.progress>span{display:block;height:100%;background:#18a957;width:0;transition:width .3s}.reward-meta{display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-size:13px}.badge{display:inline-block;background:#eef4ff;color:#175cd3;padding:4px 8px;border-radius:999px;font-size:12px}@media(max-width:700px){body{padding:10px}.top{align-items:flex-start;gap:10px;flex-direction:column}table{font-size:12px}}</style>
 </head>
 <body>
 <header class="top"><div><h1 style="margin:0">أهلاً بك يا <span id="customerName">...</span></h1><div id="status" class="muted">جاري تحميل حساب العميل...</div></div><div><a href="index.html">العودة للرئيسية</a> <button id="loginAgainBtn" class="secondary" style="display:none">العودة لتسجيل الدخول</button> <button id="logoutBtn" class="danger">تسجيل الخروج</button></div></header>
-<div class="grid"><section class="card"><h2>بيانات الحساب</h2><p>الكود: <b id="customerCode"></b></p><p>الهاتف: <b id="customerPhone"></b></p><label>العنوان</label><div style="display:flex;gap:8px"><input id="address" style="flex:1"><button id="saveAddress">حفظ</button></div></section><section class="card"><h2>المكافآت</h2><p>إجمالي المكافآت: <b id="rewardTotal">0</b></p><div id="rewardsList"></div></section></div>
+<div class="grid">
+<section class="card"><h2>بيانات الحساب</h2><p>الكود: <b id="customerCode"></b></p><p>الهاتف: <b id="customerPhone"></b></p><label>العنوان</label><div style="display:flex;gap:8px"><input id="address" style="flex:1"><button id="saveAddress">حفظ</button></div></section>
+<section class="card"><h2>نظام المكافآت</h2><p>إجمالي المكافآت: <b id="rewardTotal">0</b></p><div class="progress"><span id="rewardProgress"></span></div><div class="reward-meta"><span id="rewardProgressText">0 من 5 طلبات</span><span id="rewardEligibility" class="badge">غير مستحق حالياً</span></div><div id="rewardsList"></div></section>
+</div>
+<section class="card"><h2>الإشعارات</h2><div id="notificationsList"><p class="muted">لا توجد إشعارات.</p></div></section>
 <section class="card"><h2>طلباتي</h2><div style="overflow:auto"><table><thead><tr><th>رقم الطلب</th><th>التفاصيل</th><th>الحالة</th><th>السعر</th><th>التاريخ</th><th>إجراء</th></tr></thead><tbody id="ordersBody"></tbody></table></div></section>
 <div class="grid"><section class="card"><h2>الرسائل</h2><div id="messagesList"></div><div style="display:grid;gap:8px"><select id="messageOrder"><option value="">رسالة عامة</option></select><textarea id="messageBody" placeholder="اكتب رسالتك"></textarea><button id="sendMessage">إرسال</button></div></section><section class="card"><h2>حالة الاتصال</h2><p>البيانات تُحمّل من Supabase مباشرة.</p><button id="refreshBtn">تحديث البيانات</button></section></div>
 <script type="module">
-import { supabase } from './js/supabase-client.js?v=20260806-portal-stable-1';
-const $=id=>document.getElementById(id);
-const digits=value=>String(value||'').replace(/\D/g,'');
-const params=new URLSearchParams(location.search);
-const previewCustomerId=params.get('preview_customer_id');
-let portal=null;
-let token=localStorage.getItem('customerPortalToken');
-let authSession=null;
-let authCustomer=null;
-let previewMode=false;
-
+import { supabase } from './js/supabase-client.js?v=20260806-customer-dashboard-4';
+const $=id=>document.getElementById(id);const digits=value=>String(value||'').replace(/\D/g,'');const params=new URLSearchParams(location.search);const previewCustomerId=params.get('preview_customer_id');
+let portal=null,authSession=null,authCustomer=null,previewMode=false;let token=localStorage.getItem('customerPortalToken')||sessionStorage.getItem('customerPortalToken');
 function setStatus(message,type='ok'){$('status').textContent=message;$('status').className=type;}
 function fmt(value){return value?new Date(value).toLocaleString('ar'):'';}
 function orderPrice(order){return order?.payload?.price||order?.payload?.total||order?.total_price||order?.price||'';}
 function orderDetails(order){return order?.payload?.details||order?.payload?.productName||order?.payload?.notes||order?.notes||'';}
-
-async function fetchRelatedData(customer){
-  const phone=digits(customer.phone);
-  const [ordersResult,messagesResult,rewardsResult]=await Promise.all([
-    supabase.from('orders').select('*').order('created_at',{ascending:false}),
-    supabase.from('messages').select('*').eq('customer_id',customer.id).order('created_at',{ascending:true}),
-    supabase.from('rewards').select('*').eq('customer_id',customer.id).order('created_at',{ascending:false})
-  ]);
-  const orders=(ordersResult.data||[]).filter(order=>order.customer_id===customer.id||digits(order.customer_phone||order.payload?.customerPhone||order.payload?.phone)===phone);
-  portal={customer,orders,messages:messagesResult.data||[],rewards:rewardsResult.data||[]};
-}
-
-async function loadAdminPreview(){
-  if(!previewCustomerId)return false;
-  const sessionResult=await supabase.auth.getSession();
-  authSession=sessionResult.data?.session||null;
-  if(!authSession)return false;
-  const staffResult=await supabase.rpc('is_staff');
-  if(staffResult.error||staffResult.data!==true)return false;
-  const customerResult=await supabase.from('customers').select('*').eq('id',previewCustomerId).maybeSingle();
-  if(customerResult.error||!customerResult.data)throw new Error(customerResult.error?.message||'لم يتم العثور على العميل.');
-  previewMode=true;
-  authCustomer=customerResult.data;
-  await fetchRelatedData(authCustomer);
-  return true;
-}
-
-async function loadPortalToken(){
-  token=localStorage.getItem('customerPortalToken');
-  if(!token)return false;
-  let lastError=null;
-  for(let attempt=0;attempt<2;attempt++){
-    const result=await supabase.rpc('customer_portal_data_v2',{p_token:String(token)});
-    if(!result.error&&result.data?.ok){portal=result.data;return true;}
-    lastError=result.error||new Error(result.data?.message||'تعذر تحميل جلسة العميل.');
-    if(attempt===0)await new Promise(resolve=>setTimeout(resolve,350));
-  }
-  console.error('[Customer portal token]',lastError);
-  setStatus(lastError?.message||'تعذر تحميل جلسة العميل. اضغط تحديث للمحاولة مجدداً.','error');
-  $('loginAgainBtn').style.display='inline-block';
-  return false;
-}
-
-async function findCustomerForAuthUser(user){
-  if(!user)return null;
-  let result=await supabase.from('customers').select('*').eq('auth_user_id',user.id).maybeSingle();
-  if(!result.error&&result.data)return result.data;
-  const phone=digits(user.phone||user.user_metadata?.phone||'');
-  if(!phone)return null;
-  const all=await supabase.from('customers').select('*');
-  if(all.error)return null;
-  return (all.data||[]).find(customer=>digits(customer.phone)===phone)||null;
-}
-
-async function loadAuthCustomer(){
-  const sessionResult=await supabase.auth.getSession();
-  authSession=sessionResult.data?.session||null;
-  if(!authSession?.user)return false;
-  authCustomer=await findCustomerForAuthUser(authSession.user);
-  if(!authCustomer)return false;
-  await fetchRelatedData(authCustomer);
-  return true;
-}
-
-async function load(){
-  setStatus('جاري تحميل بيانات العميل...','muted');
-  try{
-    if(await loadAdminPreview()){
-      render();setStatus('وضع معاينة العميل بواسطة الإدارة.','warning');return;
-    }
-    if(await loadPortalToken()){
-      render();setStatus('تم تحميل جلسة العميل السحابية.','ok');return;
-    }
-    if(await loadAuthCustomer()){
-      render();setStatus('تم تحميل الحساب عبر Supabase Auth.','ok');return;
-    }
-    setStatus('لا توجد جلسة صالحة. اضغط العودة لتسجيل الدخول.','error');
-    $('loginAgainBtn').style.display='inline-block';
-  }catch(error){
-    console.error('[Customer dashboard]',error);
-    setStatus(error.message||'تعذر تحميل لوحة العميل.','error');
-    $('loginAgainBtn').style.display='inline-block';
-  }
-}
-
-function render(){
-  const customer=portal?.customer||{};
-  $('customerName').textContent=customer.name||'العميل';
-  $('customerCode').textContent=customer.customer_code||customer.payload?.code||'';
-  $('customerPhone').textContent=customer.phone||'';
-  $('address').value=customer.address||'';
-  const orders=portal?.orders||[];
-  $('ordersBody').innerHTML=orders.map(order=>`<tr><td>${order.legacy_id||order.order_number||order.id}</td><td>${orderDetails(order)}</td><td>${order.status||''}</td><td>${orderPrice(order)}</td><td>${fmt(order.created_at)}</td><td>${previewMode?'معاينة فقط':`<button class="danger" data-cancel="${order.id}">إلغاء</button>`}</td></tr>`).join('')||'<tr><td colspan="6">لا توجد طلبات.</td></tr>';
-  $('messageOrder').innerHTML='<option value="">رسالة عامة</option>'+orders.map(order=>`<option value="${order.id}">${order.legacy_id||order.order_number||order.id}</option>`).join('');
-  $('messagesList').innerHTML=(portal?.messages||[]).map(message=>`<div class="message ${message.sender||'customer'}"><b>${message.sender==='customer'?'العميل':'الإدارة'}</b>: ${message.body||''}<div class="muted">${fmt(message.created_at)}</div></div>`).join('')||'<p>لا توجد رسائل.</p>';
-  const rewards=portal?.rewards||[];
-  $('rewardTotal').textContent=rewards.reduce((sum,reward)=>sum+Number(reward.amount||0),0).toFixed(2);
-  $('rewardsList').innerHTML=rewards.map(reward=>`<p>${Number(reward.amount||0).toFixed(2)} — ${reward.note||''} <span class="muted">${fmt(reward.created_at)}</span></p>`).join('')||'<p>لا توجد مكافآت.</p>';
-  if(previewMode){$('saveAddress').disabled=true;$('sendMessage').disabled=true;$('messageBody').disabled=true;$('messageOrder').disabled=true;}
-}
-
-$('saveAddress').onclick=async()=>{
-  if(previewMode)return;
-  const address=$('address').value.trim();
-  if(token){const {data,error}=await supabase.rpc('customer_update_address',{p_token:token,p_address:address});if(error||!data?.ok)return setStatus(error?.message||data?.message||'تعذر حفظ العنوان.','error');}
-  else if(authCustomer){const {error}=await supabase.from('customers').update({address,updated_at:new Date().toISOString()}).eq('id',authCustomer.id);if(error)return setStatus(error.message,'error');}
-  await load();
-};
-$('sendMessage').onclick=async()=>{
-  if(previewMode)return;
-  const body=$('messageBody').value.trim();if(!body)return;
-  if(token){const {data,error}=await supabase.rpc('customer_send_message',{p_token:token,p_order_id:$('messageOrder').value||null,p_body:body});if(error||!data?.ok)return setStatus(error?.message||data?.message||'تعذر إرسال الرسالة.','error');}
-  else if(authCustomer){const {error}=await supabase.from('messages').insert({customer_id:authCustomer.id,order_id:$('messageOrder').value||null,sender:'customer',body});if(error)return setStatus(error.message,'error');}
-  $('messageBody').value='';await load();
-};
-$('ordersBody').onclick=async event=>{
-  if(previewMode)return;
-  const id=event.target.dataset.cancel;if(!id||!confirm('تأكيد إلغاء الطلب؟'))return;
-  if(token){const {data,error}=await supabase.rpc('customer_cancel_order',{p_token:token,p_order_id:id});if(error||!data?.ok)return setStatus(error?.message||data?.message||'تعذر إلغاء الطلب.','error');}
-  else if(authCustomer){const {error}=await supabase.from('orders').update({status:'cancelled_by_customer',updated_at:new Date().toISOString()}).eq('id',id).eq('customer_id',authCustomer.id);if(error)return setStatus(error.message,'error');}
-  await load();
-};
-$('refreshBtn').onclick=load;
-$('loginAgainBtn').onclick=()=>location.replace('login.html');
-$('logoutBtn').onclick=async()=>{localStorage.removeItem('customerPortalToken');if(authSession&&!previewMode)await supabase.auth.signOut();location.replace(previewMode?'admin.html':'login.html');};
-await load();
+function isCompleted(order){return ['delivered','completed','تم التسليم','مكتمل'].includes(String(order?.status||'').toLowerCase())||String(order?.status||'').includes('تسليم');}
+async function fetchRelatedData(customer){const phone=digits(customer.phone);const [ordersResult,messagesResult,rewardsResult]=await Promise.all([supabase.from('orders').select('*').order('created_at',{ascending:false}),supabase.from('messages').select('*').eq('customer_id',customer.id).order('created_at',{ascending:true}),supabase.from('rewards').select('*').eq('customer_id',customer.id).order('created_at',{ascending:false})]);const orders=(ordersResult.data||[]).filter(order=>order.customer_id===customer.id||digits(order.customer_phone||order.payload?.customerPhone||order.payload?.phone)===phone);portal={customer,orders,messages:messagesResult.data||[],rewards:rewardsResult.data||[]};}
+async function loadAdminPreview(){if(!previewCustomerId)return false;const sessionResult=await supabase.auth.getSession();authSession=sessionResult.data?.session||null;if(!authSession)return false;const staffResult=await supabase.rpc('is_staff');if(staffResult.error||staffResult.data!==true)return false;const customerResult=await supabase.from('customers').select('*').eq('id',previewCustomerId).maybeSingle();if(customerResult.error||!customerResult.data)throw new Error(customerResult.error?.message||'لم يتم العثور على العميل.');previewMode=true;authCustomer=customerResult.data;await fetchRelatedData(authCustomer);return true;}
+async function loadPortalToken(){token=localStorage.getItem('customerPortalToken')||sessionStorage.getItem('customerPortalToken');if(!token)return false;localStorage.setItem('customerPortalToken',token);sessionStorage.setItem('customerPortalToken',token);const result=await supabase.rpc('customer_portal_data_v2',{p_token:String(token)});if(!result.error&&result.data?.ok){portal=result.data;return true;}console.error('[Customer portal token]',result.error||result.data);setStatus(result.error?.message||result.data?.message||'تعذر تحميل جلسة العميل.','error');return false;}
+async function findCustomerForAuthUser(user){if(!user)return null;let result=await supabase.from('customers').select('*').eq('auth_user_id',user.id).maybeSingle();if(!result.error&&result.data)return result.data;const phone=digits(user.phone||user.user_metadata?.phone||'');if(!phone)return null;const all=await supabase.from('customers').select('*');if(all.error)return null;return(all.data||[]).find(customer=>digits(customer.phone)===phone)||null;}
+async function loadAuthCustomer(){const sessionResult=await supabase.auth.getSession();authSession=sessionResult.data?.session||null;if(!authSession?.user)return false;authCustomer=await findCustomerForAuthUser(authSession.user);if(!authCustomer)return false;await fetchRelatedData(authCustomer);return true;}
+async function load(){setStatus('جاري تحميل بيانات العميل...','muted');$('loginAgainBtn').style.display='none';try{if(await loadAdminPreview()){render();setStatus('وضع معاينة العميل بواسطة الإدارة.','warning');return;}if(await loadPortalToken()){render();setStatus('تم تحميل جلسة العميل السحابية.','ok');return;}if(await loadAuthCustomer()){render();setStatus('تم تحميل الحساب عبر Supabase Auth.','ok');return;}setStatus('تعذر العثور على جلسة العميل. سجّل الدخول مرة أخرى.','error');$('loginAgainBtn').style.display='inline-block';}catch(error){console.error('[Customer dashboard]',error);setStatus(error.message||'تعذر تحميل لوحة العميل.','error');$('loginAgainBtn').style.display='inline-block';}}
+function render(){const customer=portal?.customer||{};$('customerName').textContent=customer.name||'العميل';$('customerCode').textContent=customer.customer_code||customer.payload?.code||'';$('customerPhone').textContent=customer.phone||'';$('address').value=customer.address||'';const orders=portal?.orders||[];$('ordersBody').innerHTML=orders.map(order=>`<tr><td>${order.legacy_id||order.order_number||order.id}</td><td>${orderDetails(order)}</td><td>${order.status||''}</td><td>${orderPrice(order)}</td><td>${fmt(order.created_at)}</td><td>${previewMode?'معاينة فقط':`<button class="danger" data-cancel="${order.id}">إلغاء</button>`}</td></tr>`).join('')||'<tr><td colspan="6">لا توجد طلبات.</td></tr>';$('messageOrder').innerHTML='<option value="">رسالة عامة</option>'+orders.map(order=>`<option value="${order.id}">${order.legacy_id||order.order_number||order.id}</option>`).join('');const messages=portal?.messages||[];$('messagesList').innerHTML=messages.map(message=>`<div class="message ${message.sender||'customer'}"><b>${message.sender==='customer'?'العميل':'الإدارة'}</b>: ${message.body||''}<div class="muted">${fmt(message.created_at)}</div></div>`).join('')||'<p>لا توجد رسائل.</p>';const rewards=portal?.rewards||[];$('rewardTotal').textContent=rewards.reduce((sum,reward)=>sum+Number(reward.amount||0),0).toFixed(2);$('rewardsList').innerHTML=rewards.map(reward=>`<p>${Number(reward.amount||0).toFixed(2)} — ${reward.note||''} <span class="muted">${fmt(reward.created_at)}</span></p>`).join('')||'<p>لا توجد مكافآت سابقة.</p>';const completed=orders.filter(isCompleted).length;const target=5;const step=completed%target;const eligible=completed>0&&step===0;$('rewardProgress').style.width=`${eligible?100:(step/target)*100}%`;$('rewardProgressText').textContent=eligible?`${target} من ${target} طلبات`:`${step} من ${target} طلبات نحو المكافأة التالية`;$('rewardEligibility').textContent=eligible?'مستحق للمكافأة':'غير مستحق حالياً';const payloadNotices=Array.isArray(customer.payload?.notifications)?customer.payload.notifications:[];const adminMessages=messages.filter(m=>m.sender!=='customer');const notices=[...payloadNotices.map(n=>({body:typeof n==='string'?n:n.body||n.message,created_at:n.created_at})),...adminMessages.map(m=>({body:m.body,created_at:m.created_at}))];$('notificationsList').innerHTML=notices.map(n=>`<div class="notification">${n.body||''}<div class="muted">${fmt(n.created_at)}</div></div>`).join('')||'<p class="muted">لا توجد إشعارات جديدة.</p>';if(previewMode){$('saveAddress').disabled=true;$('sendMessage').disabled=true;$('messageBody').disabled=true;$('messageOrder').disabled=true;}}
+$('saveAddress').onclick=async()=>{if(previewMode)return;const address=$('address').value.trim();if(token){const{data,error}=await supabase.rpc('customer_update_address',{p_token:token,p_address:address});if(error||!data?.ok)return setStatus(error?.message||data?.message||'تعذر حفظ العنوان.','error');}else if(authCustomer){const{error}=await supabase.from('customers').update({address,updated_at:new Date().toISOString()}).eq('id',authCustomer.id);if(error)return setStatus(error.message,'error');}await load();};
+$('sendMessage').onclick=async()=>{if(previewMode)return;const body=$('messageBody').value.trim();if(!body)return;if(token){const{data,error}=await supabase.rpc('customer_send_message',{p_token:token,p_order_id:$('messageOrder').value||null,p_body:body});if(error||!data?.ok)return setStatus(error?.message||data?.message||'تعذر إرسال الرسالة.','error');}else if(authCustomer){const{error}=await supabase.from('messages').insert({customer_id:authCustomer.id,order_id:$('messageOrder').value||null,sender:'customer',body});if(error)return setStatus(error.message,'error');}$('messageBody').value='';await load();};
+$('ordersBody').onclick=async event=>{if(previewMode)return;const id=event.target.dataset.cancel;if(!id||!confirm('تأكيد إلغاء الطلب؟'))return;if(token){const{data,error}=await supabase.rpc('customer_cancel_order',{p_token:token,p_order_id:id});if(error||!data?.ok)return setStatus(error?.message||data?.message||'تعذر إلغاء الطلب.','error');}else if(authCustomer){const{error}=await supabase.from('orders').update({status:'cancelled_by_customer',updated_at:new Date().toISOString()}).eq('id',id).eq('customer_id',authCustomer.id);if(error)return setStatus(error.message,'error');}await load();};
+$('refreshBtn').onclick=load;$('loginAgainBtn').onclick=()=>location.replace('login.html');$('logoutBtn').onclick=async()=>{localStorage.removeItem('customerPortalToken');sessionStorage.removeItem('customerPortalToken');if(authSession&&!previewMode)await supabase.auth.signOut();location.replace(previewMode?'admin.html':'login.html');};await load();
 </script>
 </body>
 </html>
